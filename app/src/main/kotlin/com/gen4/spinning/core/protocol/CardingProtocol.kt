@@ -43,7 +43,7 @@ object CardingProtocol {
 
     // Field limits
     fun deliverySpeedValid(v: Float) = v in 2.5f..50f
-    fun cardFeedRatioValid(v: Float) = v in 3f..20f
+    fun cardFeedRatioValid(v: Float) = v in 0.4f..20f
     fun lengthLimitValid(v: Int) = v in 100..1000
     fun cylSpeedValid(v: Int) = v in 300..875
     fun btrSpeedValid(v: Int) = v in 300..650

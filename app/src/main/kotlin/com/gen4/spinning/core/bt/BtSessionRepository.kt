@@ -43,7 +43,7 @@ class BtSessionRepository(private val bluetoothAdapter: BluetoothAdapter?) {
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
     private val _inboundFrames = MutableSharedFlow<BtFrame>(
-        extraBufferCapacity = 8,
+        extraBufferCapacity = 64,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
     val inboundFrames: SharedFlow<BtFrame> = _inboundFrames.asSharedFlow()
@@ -195,6 +195,7 @@ class BtSessionRepository(private val bluetoothAdapter: BluetoothAdapter?) {
         when (val result = FrameCodec.parse(raw)) {
             is FrameCodec.ParseResult.Ok -> {
                 val frame = result.frame
+                Log.d(TAG, "RX OK: info=0x${frame.info.toString(16).uppercase()} sub=0x${frame.subState.toString(16).uppercase()} tlvs=${frame.tlvs.size}")
                 if (frame.info == 0x06u.toUByte()) {
                     lastMcStateMs = System.currentTimeMillis()
                     val state = _connectionState.value
@@ -202,9 +203,10 @@ class BtSessionRepository(private val bluetoothAdapter: BluetoothAdapter?) {
                         _connectionState.value = ConnectionState.Connected(state.deviceName, state.deviceAddress)
                     }
                 }
-                scope.launch { _inboundFrames.emit(frame) }
+                _inboundFrames.tryEmit(frame)
             }
-            else -> {}
+            is FrameCodec.ParseResult.Error -> Log.w(TAG, "RX ERR: ${result.reason} raw=${raw.take(40)}")
+            is FrameCodec.ParseResult.Skip  -> Log.d(TAG, "RX SKIP: ${result.reason}")
         }
     }
 

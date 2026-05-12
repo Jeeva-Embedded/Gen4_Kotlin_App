@@ -33,6 +33,7 @@ private fun substateLabel(s: UByte): String = when (s) {
 @Composable
 fun CardingStatusScreen(vm: CardingViewModel) {
     val runState by vm.runState.collectAsState()
+    val settings by vm.settings.collectAsState()
     val isRunning = runState.substate == 0x01u.toUByte()
     val isPaused  = runState.substate == 0x02u.toUByte()
     val isError   = runState.substate == 0x03u.toUByte()
@@ -48,8 +49,7 @@ fun CardingStatusScreen(vm: CardingViewModel) {
         Spacer(Modifier.height(8.dp))
         StatusBox(
             label = "Status",
-            value = if (runState.substate == 0x00u.toUByte()) "--"
-                    else substateLabel(runState.substate).uppercase(),
+            value = substateLabel(runState.substate).uppercase(),
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(12.dp))
@@ -58,7 +58,10 @@ fun CardingStatusScreen(vm: CardingViewModel) {
             isRunning -> {
                 StatusBox(
                     label = "Delivery Speed",
-                    value = "${"%.1f".format(runState.deliveryMtrsPerMin)} m/min",
+                    value = if (runState.deliveryMtrsPerMin > 0f)
+                                "${"%.1f".format(runState.deliveryMtrsPerMin)} m/min"
+                            else
+                                "${settings.deliverySpeed} m/min",
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(12.dp))

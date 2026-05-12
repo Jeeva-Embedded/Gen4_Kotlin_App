@@ -32,14 +32,17 @@ object FrameCodec {
         val subState = s.substring(6, 8).toUByteOrNull(16) ?: return ParseResult.Error("bad substate")
         val attributeCount = s.substring(8, 10).toIntOrNull(16) ?: return ParseResult.Error("bad attrCount")
 
+        // Use position-based parsing (not attributeCount-based) so ATTR_COUNT encoding
+        // differences between firmwares don't cause parse failures — same approach Flutter uses.
         val tlvs = mutableListOf<Tlv>()
         var cursor = 10
-        repeat(attributeCount) { i ->
-            if (cursor + 4 > eofOffset) return ParseResult.Error("TLV $i overruns EOF")
-            val type = s.substring(cursor, cursor + 2).toUByteOrNull(16) ?: return ParseResult.Error("TLV $i bad type")
-            val wireLen = s.substring(cursor + 2, cursor + 4).toUByteOrNull(16) ?: return ParseResult.Error("TLV $i bad len")
-            val valueChars = when (wireLen.toInt()) { 0x02 -> 2; 0x04 -> 4; 0x08 -> 8; else -> return ParseResult.Error("TLV $i unknown len") }
-            if (cursor + 4 + valueChars > eofOffset) return ParseResult.Error("TLV $i value overruns EOF")
+        while (cursor < eofOffset) {
+            if (cursor + 4 > eofOffset) return ParseResult.Error("TLV overruns EOF at $cursor")
+            val type = s.substring(cursor, cursor + 2).toUByteOrNull(16) ?: return ParseResult.Error("bad TLV type at $cursor")
+            val wireLen = s.substring(cursor + 2, cursor + 4).toUByteOrNull(16) ?: return ParseResult.Error("bad TLV len at $cursor")
+            val valueChars = wireLen.toInt()
+            if (valueChars < 2 || valueChars % 2 != 0 || valueChars > 32) return ParseResult.Error("invalid TLV wireLen $wireLen at $cursor")
+            if (cursor + 4 + valueChars > eofOffset) return ParseResult.Error("TLV value overruns EOF at $cursor")
             tlvs.add(Tlv(type, wireLen, s.substring(cursor + 4, cursor + 4 + valueChars)))
             cursor += 4 + valueChars
         }

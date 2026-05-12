@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gen4.spinning.ui.components.StatusBox
 import com.gen4.spinning.ui.theme.SpinColors
-import kotlin.math.PI
 
 private fun substateLabel(s: UByte): String = when (s) {
     0x00u.toUByte() -> "Idle"
@@ -55,8 +54,7 @@ fun FlyerStatusScreen(vm: FlyerViewModel) {
         Spacer(Modifier.height(8.dp))
         StatusBox(
             label = "Status",
-            value = if (runState.substate == 0x00u.toUByte()) "--"
-                    else substateLabel(runState.substate).uppercase(),
+            value = substateLabel(runState.substate).uppercase(),
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -122,8 +120,8 @@ fun FlyerStatusScreen(vm: FlyerViewModel) {
 @Composable
 private fun LiftAnimation(leftLift: Float, rightLift: Float) {
     val diff = leftLift - rightLift
-    // same angle formula as Flutter: direction = diff/4, angle = direction*PI/40 radians
-    val angleDeg = (diff / 4f) * (180f / PI.toFloat()) / 40f
+    // Flutter: angle_rad = (diff/4) * PI/40  →  angle_deg = diff/4 * 180/40
+    val angleDeg = (diff / 4f) * (180f / 40f)
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,

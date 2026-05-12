@@ -101,9 +101,8 @@ private fun CarouselCard(label: String, isProduction: Boolean, data: Map<String,
             Spacer(Modifier.height(12.dp))
 
             if (isProduction) {
-                CarouselRow("Delivery (m/min)", data["deliveryMtrsPerMin"] ?: "–", "m/min")
-                CarouselRow("Output Length",    data["outputMtrs"]         ?: "–", "m")
-                CarouselRow("Total Power",      data["totalPower"]         ?: "–", "W")
+                CarouselRow("Total Length (m)", data["outputMtrs"]  ?: "–", "m")
+                CarouselRow("Total Power (W)",  data["totalPower"]  ?: "–", "W")
             } else {
                 CarouselRow("Motor Temp", data["motorTemp"] ?: "–", "°C")
                 CarouselRow("MOSFET Temp", data["mosfetTemp"] ?: "–", "°C")

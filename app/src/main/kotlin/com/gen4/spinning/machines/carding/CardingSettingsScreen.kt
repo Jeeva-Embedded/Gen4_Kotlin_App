@@ -30,7 +30,7 @@ private fun validateSettings(settings: CardingSettings): String? {
     val deliverySpeed = settings.deliverySpeed.toDoubleOrNull() ?: return "Invalid delivery speed"
     if (deliverySpeed < 2.5 || deliverySpeed > 50.0) return "Delivery speed must be between 2.5 and 50 m/min."
     val cardFeedRatio = settings.cardFeedRatio.toDoubleOrNull() ?: return "Invalid card feed ratio"
-    if (cardFeedRatio < 3.0 || cardFeedRatio > 20.0) return "Card feed ratio must be between 3 and 20."
+    if (cardFeedRatio < 0.4 || cardFeedRatio > 20.0) return "Card feed ratio must be between 0.4 and 20."
     val lengthLimit = settings.lengthLimit.toIntOrNull() ?: return "Invalid length limit"
     if (lengthLimit < 100 || lengthLimit > 1000) return "Length limit must be between 100 and 1000 m."
     val cylSpeed = settings.cylSpeed.toIntOrNull() ?: return "Invalid cylinder speed"
@@ -51,6 +51,7 @@ fun CardingSettingsScreen(vm: CardingViewModel, onNavigatePid: () -> Unit) {
     val settings by vm.settings.collectAsState()
     val saveResult by vm.saveResult.collectAsState()
     val readResult by vm.readResult.collectAsState()
+    val defaultApplied by vm.defaultApplied.collectAsState()
     val allowChange by vm.settingsChangeAllowed.collectAsState()
     var showParams by remember { mutableStateOf(false) }
     var validationError by remember { mutableStateOf<String?>(null) }
@@ -128,7 +129,13 @@ fun CardingSettingsScreen(vm: CardingViewModel, onNavigatePid: () -> Unit) {
             Spacer(Modifier.height(16.dp))
         }
 
-        readResult?.let { SaveBanner(message = "Settings received", success = true) }
+        readResult?.let {
+            SaveBanner(
+                message = if (it) "Settings received" else "Settings not received",
+                success = it,
+            )
+        }
+        defaultApplied?.let { SaveBanner(message = "Defaults applied", success = true) }
         saveResult?.let {
             SaveBanner(
                 message = if (it) "Settings saved successfully" else "Save failed",

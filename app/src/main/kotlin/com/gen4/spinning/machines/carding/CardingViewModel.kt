@@ -1,5 +1,6 @@
 package com.gen4.spinning.machines.carding
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gen4.spinning.core.bt.BtSessionRepository
@@ -58,11 +59,16 @@ class CardingViewModel(private val repository: BtSessionRepository) : ViewModel(
     private val _readResult = MutableStateFlow<Boolean?>(null)
     val readResult: StateFlow<Boolean?> = _readResult.asStateFlow()
 
+    private val _defaultApplied = MutableStateFlow<Boolean?>(null)
+    val defaultApplied: StateFlow<Boolean?> = _defaultApplied.asStateFlow()
+
     private val _diagnosisState = MutableStateFlow(CardingDiagnosisState())
     val diagnosisState: StateFlow<CardingDiagnosisState> = _diagnosisState.asStateFlow()
 
     private val _settingsChangeAllowed = MutableStateFlow(true)
     val settingsChangeAllowed: StateFlow<Boolean> = _settingsChangeAllowed.asStateFlow()
+
+    @Volatile private var readPending = false
 
     init {
         viewModelScope.launch { collectFrames() }
@@ -71,6 +77,7 @@ class CardingViewModel(private val repository: BtSessionRepository) : ViewModel(
 
     private suspend fun collectFrames() {
         repository.inboundFrames.collect { frame ->
+            Log.d("CardingVM", "frame info=0x${frame.info.toString(16).uppercase()}")
             try {
                 when (frame.info) {
                     0x06u.toUByte() -> {
@@ -140,6 +147,7 @@ class CardingViewModel(private val repository: BtSessionRepository) : ViewModel(
                             }
                         }
                         _settings.value = s
+                        readPending = false
                         viewModelScope.launch {
                             _readResult.value = true
                             kotlinx.coroutines.delay(2_000)
@@ -151,13 +159,15 @@ class CardingViewModel(private val repository: BtSessionRepository) : ViewModel(
                         if (_diagnosisState.value.isDiagnosing) {
                             var rpm = "-"; var pwm = "-"; var current = "-"; var power = "-"
                             for (tlv in frame.tlvs) {
-                                when (tlv.type) {
-                                    0x01u.toUByte() -> rpm     = tlv.valueAsUInt16().toString()
-                                    0x02u.toUByte() -> pwm     = if (tlv.length == 0x04u.toUByte()) tlv.valueAsUInt16().toString()
-                                                                 else "%.1f".format(tlv.valueAsFloat())
-                                    0x03u.toUByte() -> current = "%.2f".format(tlv.valueAsFloat())
-                                    0x04u.toUByte() -> power   = "%.1f".format(tlv.valueAsFloat())
-                                }
+                                try {
+                                    val isInt = tlv.length == 0x04u.toUByte()
+                                    when (tlv.type) {
+                                        0x01u.toUByte() -> rpm     = if (isInt) tlv.valueAsUInt16().toString() else "%.0f".format(tlv.valueAsFloat())
+                                        0x02u.toUByte() -> pwm     = if (isInt) tlv.valueAsUInt16().toString() else "%.1f".format(tlv.valueAsFloat())
+                                        0x03u.toUByte() -> current = if (isInt) tlv.valueAsUInt16().toString() else "%.2f".format(tlv.valueAsFloat())
+                                        0x04u.toUByte() -> power   = if (isInt) tlv.valueAsUInt16().toString() else "%.1f".format(tlv.valueAsFloat())
+                                    }
+                                } catch (_: Exception) { }
                             }
                             _diagnosisState.value = _diagnosisState.value.copy(
                                 isDiagnosing = true, rpm = rpm, pwm = pwm, current = current, power = power
@@ -197,8 +207,29 @@ class CardingViewModel(private val repository: BtSessionRepository) : ViewModel(
     }
 
     fun updateSettings(s: CardingSettings) { _settings.value = s }
-    fun resetToDefaults() { _settings.value = CardingSettings() }
-    fun sendRead() { repository.sendFrame(FrameCodec.buildReqSettings()) }
+
+    fun resetToDefaults() {
+        _settings.value = CardingSettings()
+        viewModelScope.launch {
+            _defaultApplied.value = true
+            kotlinx.coroutines.delay(2_000)
+            _defaultApplied.value = null
+        }
+    }
+
+    fun sendRead() {
+        readPending = true
+        repository.sendFrame(FrameCodec.buildReqSettings())
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(3_000)
+            if (readPending) {
+                readPending = false
+                _readResult.value = false
+                kotlinx.coroutines.delay(2_000)
+                _readResult.value = null
+            }
+        }
+    }
 
     fun sendSave() {
         val s = _settings.value
