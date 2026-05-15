@@ -57,11 +57,6 @@ private val flyerMotors = listOf(
 fun FlyerTestsScreen(vm: FlyerViewModel) {
     val diagnosisState by vm.diagnosisState.collectAsState()
 
-    if (diagnosisState.isDiagnosing) {
-        FlyerDiagnosisResultScreen(state = diagnosisState, onBack = { vm.sendStopDiagnosis(); vm.clearDiagnosis() })
-        return
-    }
-
     var motorIndex by remember { mutableIntStateOf(0) }
     var controlIndex by remember { mutableIntStateOf(0) }
     var directionIndex by remember { mutableIntStateOf(0) }
@@ -76,6 +71,11 @@ fun FlyerTestsScreen(vm: FlyerViewModel) {
     var liftCmdExpanded by remember { mutableStateOf(false) }
 
     val isLift by remember { derivedStateOf { flyerMotors[motorIndex].isLift } }
+
+    if (diagnosisState.isDiagnosing) {
+        FlyerDiagnosisResultScreen(state = diagnosisState, onBack = { vm.sendStopDiagnosis(); vm.clearDiagnosis() })
+        return
+    }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
@@ -98,36 +98,37 @@ fun FlyerTestsScreen(vm: FlyerViewModel) {
 
         Spacer(Modifier.height(12.dp))
 
-        ExposedDropdownMenuBox(expanded = controlExpanded, onExpandedChange = { controlExpanded = it }) {
-            OutlinedTextField(
-                value = if (controlIndex == 0) "Open Loop" else "Closed Loop",
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Control Loop") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(controlExpanded) },
-                modifier = Modifier.fillMaxWidth().menuAnchor(),
-            )
-            ExposedDropdownMenu(expanded = controlExpanded, onDismissRequest = { controlExpanded = false }) {
-                listOf("Open Loop", "Closed Loop").forEachIndexed { i, label ->
-                    DropdownMenuItem(text = { Text(label) }, onClick = { controlIndex = i; controlExpanded = false })
+        if (!isLift) {
+            ExposedDropdownMenuBox(expanded = controlExpanded, onExpandedChange = { controlExpanded = it }) {
+                OutlinedTextField(
+                    value = if (controlIndex == 0) "Open Loop" else "Closed Loop",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Control Loop") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(controlExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                )
+                ExposedDropdownMenu(expanded = controlExpanded, onDismissRequest = { controlExpanded = false }) {
+                    listOf("Open Loop", "Closed Loop").forEachIndexed { i, label ->
+                        DropdownMenuItem(text = { Text(label) }, onClick = { controlIndex = i; controlExpanded = false })
+                    }
                 }
             }
+            Spacer(Modifier.height(12.dp))
         }
-
-        Spacer(Modifier.height(12.dp))
 
         if (isLift) {
             ExposedDropdownMenuBox(expanded = liftCmdExpanded, onExpandedChange = { liftCmdExpanded = it }) {
                 OutlinedTextField(
-                    value = listOf("Up", "Down", "Stop")[liftCmdIndex],
+                    value = if (liftCmdIndex == 0) "Up" else "Down",
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Lift Command") },
+                    label = { Text("Bed Direction") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(liftCmdExpanded) },
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
                 )
                 ExposedDropdownMenu(expanded = liftCmdExpanded, onDismissRequest = { liftCmdExpanded = false }) {
-                    listOf("Up", "Down", "Stop").forEachIndexed { i, label ->
+                    listOf("Up", "Down").forEachIndexed { i, label ->
                         DropdownMenuItem(text = { Text(label) }, onClick = { liftCmdIndex = i; liftCmdExpanded = false })
                     }
                 }
@@ -160,29 +161,40 @@ fun FlyerTestsScreen(vm: FlyerViewModel) {
 
         Spacer(Modifier.height(16.dp))
 
-        Text("Speed: ${speedPct.toInt()}%", fontSize = 14.sp)
-        Slider(
-            value = speedPct, onValueChange = { speedPct = it }, valueRange = 0f..100f,
-            colors = SliderDefaults.colors(thumbColor = SpinColors.LightGreen, activeTrackColor = SpinColors.LightGreen),
-        )
+        if (!isLift) {
+            Text("Speed: ${speedPct.toInt()}%", fontSize = 14.sp)
+            Slider(
+                value = speedPct, onValueChange = { speedPct = it }, valueRange = 0f..100f,
+                colors = SliderDefaults.colors(thumbColor = SpinColors.LightGreen, activeTrackColor = SpinColors.LightGreen),
+            )
 
-        Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp))
 
-        Text("Duration: ${durationSec.toInt()} s", fontSize = 14.sp)
-        Slider(
-            value = durationSec, onValueChange = { durationSec = it }, valueRange = 1f..60f,
-            colors = SliderDefaults.colors(thumbColor = SpinColors.Blue, activeTrackColor = SpinColors.Blue),
-        )
+            Text("Duration: ${durationSec.toInt()} s", fontSize = 14.sp)
+            Slider(
+                value = durationSec, onValueChange = { durationSec = it }, valueRange = 1f..60f,
+                colors = SliderDefaults.colors(thumbColor = SpinColors.Blue, activeTrackColor = SpinColors.Blue),
+            )
 
-        Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp))
+        }
 
         GradientButton(
             text = "RUN DIAGNOSE",
             onClick = {
                 val motor = flyerMotors[motorIndex]
                 vm.startDiagnosis(motor.label)
-                val control: UByte = if (controlIndex == 0) 0x01u else 0x02u
-                val dir: UByte = if (isLift) liftCmdIndex.toUByte() else if (directionIndex == 0) 0x00u else 0x01u
+                // Lift: control auto-set (BOTH=Closed, Left/Right=Open); direction UP=0x01 DOWN=0x00
+                val control: UByte = if (isLift) {
+                    if (motor.id == FlyerProtocol.MOTOR_LIFT) 0x02u else 0x01u
+                } else {
+                    if (controlIndex == 0) 0x01u else 0x02u
+                }
+                val dir: UByte = if (isLift) {
+                    if (liftCmdIndex == 0) 0x01u else 0x00u  // Up=0x01, Down=0x00
+                } else {
+                    if (directionIndex == 0) 0x00u else 0x01u
+                }
                 val bed = if (isLift) bedDistance.toInt() else null
                 vm.sendDiagnostic(motor.id, control, dir, speedPct.toInt(), durationSec.toInt(), bed)
             },

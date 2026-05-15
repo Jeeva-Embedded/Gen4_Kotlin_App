@@ -1,6 +1,7 @@
 package com.gen4.spinning.machines.carding
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,53 +14,65 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gen4.spinning.ui.components.GradientButton
+import com.gen4.spinning.ui.components.SaveBanner
 import com.gen4.spinning.ui.theme.SpinColors
 
 @Composable
 fun CardingOptionsScreen(vm: CardingViewModel) {
-    var logEnabled by remember { mutableStateOf(false) }
+    val logEnabled by vm.logEnabled.collectAsState()
+    val logMessage by vm.logMessage.collectAsState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+    Box(modifier = Modifier.fillMaxSize()) {
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("Log", fontSize = 16.sp)
-            Switch(
-                checked = logEnabled,
-                onCheckedChange = {
-                    logEnabled = it
-                    vm.sendLog(it)
-                },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = SpinColors.LightGreen,
-                    checkedTrackColor = SpinColors.LightGreen.copy(alpha = 0.4f),
-                ),
+
+            // ── Enable Logging ──────────────────────────────────────────────
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text("Enable Logging", color = SpinColors.Blue, fontSize = 18.sp)
+                    Switch(
+                        checked = logEnabled,
+                        onCheckedChange = { vm.sendLog(it) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = SpinColors.LightGreen,
+                            checkedTrackColor = SpinColors.LightGreen.copy(alpha = 0.4f),
+                        ),
+                    )
+                }
+                HorizontalDivider()
+            }
+
+            // ── Reset Length Counter ────────────────────────────────────────
+            GradientButton(
+                text = "Reset Length Counter",
+                onClick = { vm.sendResetLengthCounter() },
+                modifier = Modifier.fillMaxWidth(),
             )
         }
 
-        Spacer(Modifier.height(24.dp))
-        HorizontalDivider()
-        Spacer(Modifier.height(16.dp))
-
-        GradientButton(
-            text = "Reset Length Counter",
-            onClick = { vm.sendResetLengthCounter() },
-            modifier = Modifier.fillMaxWidth(),
-        )
+        // ── Log banner overlay ──────────────────────────────────────────────
+        logMessage?.let {
+            SaveBanner(
+                message = it,
+                success = true,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
     }
 }

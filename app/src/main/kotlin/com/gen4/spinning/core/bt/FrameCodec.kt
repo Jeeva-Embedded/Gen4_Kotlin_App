@@ -77,14 +77,22 @@ object FrameCodec {
     fun buildPidRequest(motorId: UByte): String = build(0x0Du, 0x00u, listOf(buildTlvCompact(0x01u, motorId)))
 
     fun buildDiagnostic(motorId: UByte, controlType: UByte, direction: UByte, speedPct: UShort, durationSec: UShort, bedDistanceMm: UShort? = null): String {
-        val tlvs = mutableListOf(
-            buildTlvCompact(0x40u, motorId),
-            buildTlvCompact(0x44u, direction),
-            buildTlvCompact(0x41u, controlType),
-            buildTlvInt(0x42u, speedPct),
-            buildTlvInt(0x43u, durationSec),
-        )
-        if (bedDistanceMm != null) tlvs.add(buildTlvInt(0x45u, bedDistanceMm))
-        return build(0x04u, 0x01u, tlvs)
+        return if (bedDistanceMm != null) {
+            // Lift diagnosis: no speed or duration TLVs — Flutter protocol omits them
+            build(0x04u, 0x01u, listOf(
+                buildTlvCompact(0x40u, motorId),
+                buildTlvCompact(0x44u, direction),
+                buildTlvCompact(0x41u, controlType),
+                buildTlvInt(0x45u, bedDistanceMm),
+            ))
+        } else {
+            build(0x04u, 0x01u, listOf(
+                buildTlvCompact(0x40u, motorId),
+                buildTlvCompact(0x44u, direction),
+                buildTlvCompact(0x41u, controlType),
+                buildTlvInt(0x42u, speedPct),
+                buildTlvInt(0x43u, durationSec),
+            ))
+        }
     }
 }

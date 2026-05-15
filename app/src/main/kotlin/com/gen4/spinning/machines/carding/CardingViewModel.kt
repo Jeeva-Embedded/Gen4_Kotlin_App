@@ -65,6 +65,12 @@ class CardingViewModel(private val repository: BtSessionRepository) : ViewModel(
     private val _diagnosisState = MutableStateFlow(CardingDiagnosisState())
     val diagnosisState: StateFlow<CardingDiagnosisState> = _diagnosisState.asStateFlow()
 
+    private val _logEnabled = MutableStateFlow(false)
+    val logEnabled: StateFlow<Boolean> = _logEnabled.asStateFlow()
+
+    private val _logMessage = MutableStateFlow<String?>(null)
+    val logMessage: StateFlow<String?> = _logMessage.asStateFlow()
+
     private val _settingsChangeAllowed = MutableStateFlow(true)
     val settingsChangeAllowed: StateFlow<Boolean> = _settingsChangeAllowed.asStateFlow()
 
@@ -252,7 +258,15 @@ class CardingViewModel(private val repository: BtSessionRepository) : ViewModel(
 
     fun sendGearbox(substate: UByte) { repository.sendFrame(FrameCodec.build(0x08u, substate)) }
     fun sendRtf(enabled: Boolean) { repository.sendFrame(FrameCodec.build(0x0Bu, if (enabled) 0x01u else 0x00u)) }
-    fun sendLog(enabled: Boolean) { repository.sendFrame(FrameCodec.build(0x0Cu, if (enabled) 0x01u else 0x00u)) }
+    fun sendLog(enabled: Boolean) {
+        _logEnabled.value = enabled
+        repository.sendFrame(FrameCodec.build(0x0Cu, if (enabled) 0x01u else 0x00u))
+        viewModelScope.launch {
+            _logMessage.value = if (enabled) "Log Enabled" else "Log Disabled"
+            kotlinx.coroutines.delay(2_000)
+            _logMessage.value = null
+        }
+    }
     fun disconnect() { repository.disconnect() }
 
     private fun cardingPauseReason(code: Int): String = when (code) {

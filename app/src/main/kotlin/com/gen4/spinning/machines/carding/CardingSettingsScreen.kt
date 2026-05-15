@@ -135,7 +135,7 @@ fun CardingSettingsScreen(vm: CardingViewModel, onNavigatePid: () -> Unit) {
                 success = it,
             )
         }
-        defaultApplied?.let { SaveBanner(message = "Defaults applied", success = true) }
+        defaultApplied?.let { SaveBanner(message = "Defaults received", success = true) }
         saveResult?.let {
             SaveBanner(
                 message = if (it) "Settings saved successfully" else "Save failed",

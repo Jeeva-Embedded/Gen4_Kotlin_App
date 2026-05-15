@@ -53,11 +53,6 @@ private val cardingMotors = listOf(
 fun CardingTestsScreen(vm: CardingViewModel) {
     val diagnosisState by vm.diagnosisState.collectAsState()
 
-    if (diagnosisState.isDiagnosing) {
-        CardingDiagnosisResultScreen(state = diagnosisState, onBack = { vm.sendStopDiagnosis(); vm.clearDiagnosis() })
-        return
-    }
-
     var motorIndex by remember { mutableIntStateOf(0) }
     var controlIndex by remember { mutableIntStateOf(0) }
     var directionIndex by remember { mutableIntStateOf(0) }
@@ -67,6 +62,11 @@ fun CardingTestsScreen(vm: CardingViewModel) {
     var motorExpanded by remember { mutableStateOf(false) }
     var controlExpanded by remember { mutableStateOf(false) }
     var directionExpanded by remember { mutableStateOf(false) }
+
+    if (diagnosisState.isDiagnosing) {
+        CardingDiagnosisResultScreen(state = diagnosisState, onBack = { vm.sendStopDiagnosis(); vm.clearDiagnosis() })
+        return
+    }
 
     Column(
         modifier = Modifier

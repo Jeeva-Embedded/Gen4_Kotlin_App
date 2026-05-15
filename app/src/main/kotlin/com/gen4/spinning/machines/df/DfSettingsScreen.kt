@@ -51,6 +51,7 @@ fun DfSettingsScreen(vm: DfViewModel, onNavigatePid: () -> Unit) {
     val settings by vm.settings.collectAsState()
     val saveResult by vm.saveResult.collectAsState()
     val readResult by vm.readResult.collectAsState()
+    val defaultApplied by vm.defaultApplied.collectAsState()
     var showParams by remember { mutableStateOf(false) }
     var validationError by remember { mutableStateOf<String?>(null) }
 
@@ -91,12 +92,13 @@ fun DfSettingsScreen(vm: DfViewModel, onNavigatePid: () -> Unit) {
             Spacer(Modifier.height(16.dp))
         }
 
-        readResult?.let { SaveBanner(message = "Settings received", success = true) }
+        readResult?.let { SaveBanner(message = if (it) "Settings received" else "Settings not received", success = it) }
+        defaultApplied?.let { SaveBanner(message = "Defaults received", success = true) }
         saveResult?.let { SaveBanner(message = if (it) "Settings saved successfully" else "Save failed", success = it) }
 
         SettingsToolbar(
             onRead = { vm.sendRead() },
-            onAll = { vm.sendAll() },
+            onAll = { vm.resetToDefaults() },
             onSave = {
                 val err = validateSettings(settings)
                 if (err != null) validationError = err else vm.sendSave()

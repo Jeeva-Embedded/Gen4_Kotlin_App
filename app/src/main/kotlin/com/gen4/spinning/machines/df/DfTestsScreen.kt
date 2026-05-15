@@ -49,11 +49,6 @@ private val dfMotors = listOf(
 fun DfTestsScreen(vm: DfViewModel) {
     val diagnosisState by vm.diagnosisState.collectAsState()
 
-    if (diagnosisState.isDiagnosing) {
-        DfDiagnosisResultScreen(state = diagnosisState, onBack = { vm.sendStopDiagnosis(); vm.clearDiagnosis() })
-        return
-    }
-
     var motorIndex by remember { mutableIntStateOf(0) }
     var controlIndex by remember { mutableIntStateOf(0) }
     var directionIndex by remember { mutableIntStateOf(0) }
@@ -63,6 +58,11 @@ fun DfTestsScreen(vm: DfViewModel) {
     var motorExpanded by remember { mutableStateOf(false) }
     var controlExpanded by remember { mutableStateOf(false) }
     var directionExpanded by remember { mutableStateOf(false) }
+
+    if (diagnosisState.isDiagnosing) {
+        DfDiagnosisResultScreen(state = diagnosisState, onBack = { vm.sendStopDiagnosis(); vm.clearDiagnosis() })
+        return
+    }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         ExposedDropdownMenuBox(expanded = motorExpanded, onExpandedChange = { motorExpanded = it }) {

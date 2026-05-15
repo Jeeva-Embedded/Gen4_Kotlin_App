@@ -10,8 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -47,8 +45,7 @@ fun FlyerStatusScreen(vm: FlyerViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(8.dp))
@@ -69,7 +66,9 @@ fun FlyerStatusScreen(vm: FlyerViewModel) {
                 Spacer(Modifier.height(16.dp))
                 LiftAnimation(leftLift = runState.leftLift, rightLift = runState.rightLift)
                 Spacer(Modifier.height(16.dp))
-                FlyerCarousel(vm = vm)
+                Box(modifier = Modifier.weight(1f)) {
+                    FlyerCarousel(vm = vm)
+                }
             }
             isPaused -> {
                 Spacer(Modifier.height(12.dp))
@@ -78,14 +77,12 @@ fun FlyerStatusScreen(vm: FlyerViewModel) {
                     value = runState.pauseReason,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                if (runState.pauseLayer.toInt() != 0) {
-                    Spacer(Modifier.height(8.dp))
-                    StatusBox(
-                        label = "Layers",
-                        value = runState.pauseLayer.toString(),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+                Spacer(Modifier.height(8.dp))
+                StatusBox(
+                    label = "Layers",
+                    value = runState.pauseLayer.toString(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
             isHoming -> {
                 Spacer(Modifier.height(16.dp))
@@ -104,14 +101,12 @@ fun FlyerStatusScreen(vm: FlyerViewModel) {
                     value = runState.errorSource,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                if (runState.errorLayer.toInt() != 0) {
-                    Spacer(Modifier.height(12.dp))
-                    StatusBox(
-                        label = "Layers",
-                        value = runState.errorLayer.toString(),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+                Spacer(Modifier.height(12.dp))
+                StatusBox(
+                    label = "Layers",
+                    value = runState.errorLayer.toString(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }

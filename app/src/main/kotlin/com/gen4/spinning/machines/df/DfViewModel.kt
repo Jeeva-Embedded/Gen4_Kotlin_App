@@ -55,8 +55,19 @@ class DfViewModel(private val repository: BtSessionRepository) : ViewModel() {
     private val _readResult = MutableStateFlow<Boolean?>(null)
     val readResult: StateFlow<Boolean?> = _readResult.asStateFlow()
 
+    private val _defaultApplied = MutableStateFlow<Boolean?>(null)
+    val defaultApplied: StateFlow<Boolean?> = _defaultApplied.asStateFlow()
+
     private val _diagnosisState = MutableStateFlow(DfDiagnosisState())
     val diagnosisState: StateFlow<DfDiagnosisState> = _diagnosisState.asStateFlow()
+
+    private val _logEnabled = MutableStateFlow(false)
+    val logEnabled: StateFlow<Boolean> = _logEnabled.asStateFlow()
+
+    private val _logMessage = MutableStateFlow<String?>(null)
+    val logMessage: StateFlow<String?> = _logMessage.asStateFlow()
+
+    @Volatile private var readPending = false
 
     init {
         viewModelScope.launch { collectFrames() }
@@ -133,6 +144,7 @@ class DfViewModel(private val repository: BtSessionRepository) : ViewModel() {
                             }
                         }
                         _settings.value = s
+                        readPending = false
                         viewModelScope.launch {
                             _readResult.value = true
                             kotlinx.coroutines.delay(2_000)
@@ -192,7 +204,30 @@ class DfViewModel(private val repository: BtSessionRepository) : ViewModel() {
     }
 
     fun updateSettings(s: DfSettings) { _settings.value = s }
-    fun sendRead() { repository.sendFrame(FrameCodec.buildReqSettings()) }
+
+    fun resetToDefaults() {
+        _settings.value = DfSettings()
+        viewModelScope.launch {
+            _defaultApplied.value = true
+            kotlinx.coroutines.delay(2_000)
+            _defaultApplied.value = null
+        }
+    }
+
+    fun sendRead() {
+        readPending = true
+        repository.sendFrame(FrameCodec.buildReqSettings())
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(3_000)
+            if (readPending) {
+                readPending = false
+                _readResult.value = false
+                kotlinx.coroutines.delay(2_000)
+                _readResult.value = null
+            }
+        }
+    }
+
     fun sendSave() { buildFrame()?.let { repository.sendFrame(it) } }
     fun sendAll() { sendRead() }
     fun startDiagnosis(motorLabel: String) { _diagnosisState.value = DfDiagnosisState(isDiagnosing = true, motorLabel = motorLabel) }
@@ -209,7 +244,15 @@ class DfViewModel(private val repository: BtSessionRepository) : ViewModel() {
     fun sendStopDiagnosis() { repository.sendFrame(FrameCodec.build(0x04u, 0x06u)) }
     fun sendGearbox(substate: UByte) { repository.sendFrame(FrameCodec.build(0x08u, substate)) }
     fun sendRtf(enabled: Boolean) { repository.sendFrame(FrameCodec.build(0x0Bu, if (enabled) 0x01u else 0x00u)) }
-    fun sendLog(enabled: Boolean) { repository.sendFrame(FrameCodec.build(0x0Cu, if (enabled) 0x01u else 0x00u)) }
+    fun sendLog(enabled: Boolean) {
+        _logEnabled.value = enabled
+        repository.sendFrame(FrameCodec.build(0x0Cu, if (enabled) 0x01u else 0x00u))
+        viewModelScope.launch {
+            _logMessage.value = if (enabled) "Log Enabled" else "Log Disabled"
+            kotlinx.coroutines.delay(2_000)
+            _logMessage.value = null
+        }
+    }
     fun disconnect() { repository.disconnect() }
 
     private fun dfPauseReason(code: Int): String = when (code) {

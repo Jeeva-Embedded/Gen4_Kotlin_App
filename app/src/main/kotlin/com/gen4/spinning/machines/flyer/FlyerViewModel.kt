@@ -68,6 +68,23 @@ class FlyerViewModel(private val repository: BtSessionRepository) : ViewModel() 
     private val _diagnosisState = MutableStateFlow(FlyerDiagnosisState())
     val diagnosisState: StateFlow<FlyerDiagnosisState> = _diagnosisState.asStateFlow()
 
+    private val _gearboxLeft = MutableStateFlow("-")
+    val gearboxLeft: StateFlow<String> = _gearboxLeft.asStateFlow()
+
+    private val _gearboxRight = MutableStateFlow("-")
+    val gearboxRight: StateFlow<String> = _gearboxRight.asStateFlow()
+
+    private val _defaultApplied = MutableStateFlow<Boolean?>(null)
+    val defaultApplied: StateFlow<Boolean?> = _defaultApplied.asStateFlow()
+
+    private val _logEnabled = MutableStateFlow(false)
+    val logEnabled: StateFlow<Boolean> = _logEnabled.asStateFlow()
+
+    private val _logMessage = MutableStateFlow<String?>(null)
+    val logMessage: StateFlow<String?> = _logMessage.asStateFlow()
+
+    @Volatile private var readPending = false
+
     init {
         viewModelScope.launch { collectFrames() }
         viewModelScope.launch { collectSaveResponse() }
@@ -157,6 +174,7 @@ class FlyerViewModel(private val repository: BtSessionRepository) : ViewModel() 
                             }
                         }
                         _settings.value = s
+                        readPending = false
                         viewModelScope.launch {
                             _readResult.value = true
                             kotlinx.coroutines.delay(2_000)
@@ -179,6 +197,19 @@ class FlyerViewModel(private val repository: BtSessionRepository) : ViewModel() 
                             _diagnosisState.value = _diagnosisState.value.copy(
                                 isDiagnosing = true, rpm = rpm, pwm = pwm, current = current, power = power
                             )
+                        }
+                    }
+
+                    0x09u.toUByte() -> {
+                        for (tlv in frame.tlvs) {
+                            when (tlv.type) {
+                                0x01u.toUByte() -> _gearboxLeft.value =
+                                    if (tlv.length == 0x04u.toUByte()) tlv.valueAsUInt16().toString()
+                                    else "%.2f".format(tlv.valueAsFloat())
+                                0x02u.toUByte() -> _gearboxRight.value =
+                                    if (tlv.length == 0x04u.toUByte()) tlv.valueAsUInt16().toString()
+                                    else "%.2f".format(tlv.valueAsFloat())
+                            }
                         }
                     }
 
@@ -214,7 +245,30 @@ class FlyerViewModel(private val repository: BtSessionRepository) : ViewModel() 
     }
 
     fun updateSettings(s: FlyerSettings) { _settings.value = s }
-    fun sendRead() { repository.sendFrame(FrameCodec.buildReqSettings()) }
+
+    fun resetToDefaults() {
+        _settings.value = FlyerSettings()
+        viewModelScope.launch {
+            _defaultApplied.value = true
+            kotlinx.coroutines.delay(2_000)
+            _defaultApplied.value = null
+        }
+    }
+
+    fun sendRead() {
+        readPending = true
+        repository.sendFrame(FrameCodec.buildReqSettings())
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(3_000)
+            if (readPending) {
+                readPending = false
+                _readResult.value = false
+                kotlinx.coroutines.delay(2_000)
+                _readResult.value = null
+            }
+        }
+    }
+
     fun sendAll() { sendRead() }
     fun sendSave() { buildFrame()?.let { repository.sendFrame(it) } }
 
@@ -232,7 +286,15 @@ class FlyerViewModel(private val repository: BtSessionRepository) : ViewModel() 
     fun sendResetLengthCounter() { repository.sendFrame(FrameCodec.buildResetLengthCounter()) }
     fun sendGearbox(substate: UByte) { repository.sendFrame(FrameCodec.build(0x08u, substate)) }
     fun sendRtf(enabled: Boolean) { repository.sendFrame(FrameCodec.build(0x0Bu, if (enabled) 0x01u else 0x00u)) }
-    fun sendLog(enabled: Boolean) { repository.sendFrame(FrameCodec.build(0x0Cu, if (enabled) 0x01u else 0x00u)) }
+    fun sendLog(enabled: Boolean) {
+        _logEnabled.value = enabled
+        repository.sendFrame(FrameCodec.build(0x0Cu, if (enabled) 0x01u else 0x00u))
+        viewModelScope.launch {
+            _logMessage.value = if (enabled) "Log Enabled" else "Log Disabled"
+            kotlinx.coroutines.delay(2_000)
+            _logMessage.value = null
+        }
+    }
     fun disconnect() { repository.disconnect() }
 
     private fun flyerPauseReason(code: Int): String = when (code) {
