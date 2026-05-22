@@ -12,14 +12,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class CardingSettings(
-    val deliverySpeed: String = "8.0",
-    val cardFeedRatio: String = "5.0",
-    val lengthLimit: String = "1000",
-    val cylSpeed: String = "750",
-    val btrSpeed: String = "600",
-    val pickerCylSpeed: String = "600",
-    val btrFeed: String = "10",
-    val afFeed: String = "7",
+    val deliverySpeed: String = "",
+    val cardFeedRatio: String = "",
+    val lengthLimit: String = "",
+    val cylSpeed: String = "",
+    val btrSpeed: String = "",
+    val pickerCylSpeed: String = "",
+    val btrFeed: String = "",
+    val afFeed: String = "",
 )
 
 data class CardingRunState(
@@ -215,7 +215,16 @@ class CardingViewModel(private val repository: BtSessionRepository) : ViewModel(
     fun updateSettings(s: CardingSettings) { _settings.value = s }
 
     fun resetToDefaults() {
-        _settings.value = CardingSettings()
+        _settings.value = CardingSettings(
+            deliverySpeed = "8.0",
+            cardFeedRatio = "5.0",
+            lengthLimit = "1000",
+            cylSpeed = "750",
+            btrSpeed = "600",
+            pickerCylSpeed = "600",
+            btrFeed = "10",
+            afFeed = "7",
+        )
         viewModelScope.launch {
             _defaultApplied.value = true
             kotlinx.coroutines.delay(2_000)

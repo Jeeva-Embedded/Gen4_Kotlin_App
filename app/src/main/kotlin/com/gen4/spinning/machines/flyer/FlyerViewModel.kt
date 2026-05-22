@@ -11,19 +11,19 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class FlyerSettings(
-    val spindleSpeed: String = "650",
-    val draft: String = "8.8",
-    val twistPerInch: String = "1.4",
-    val rtf: String = "1.0",
-    val layers: String = "50",
-    val maxHeight: String = "270",
-    val rovingWidth: String = "1.2",
-    val deltaBobbinDia: String = "1.1",
-    val bareBobbinDia: String = "48",
-    val rampUpTime: String = "12",
-    val rampDownTime: String = "12",
-    val changeLayerTime: String = "800",
-    val coneAngleFactor: String = "1.0",
+    val spindleSpeed: String = "",
+    val draft: String = "",
+    val twistPerInch: String = "",
+    val rtf: String = "",
+    val layers: String = "",
+    val maxHeight: String = "",
+    val rovingWidth: String = "",
+    val deltaBobbinDia: String = "",
+    val bareBobbinDia: String = "",
+    val rampUpTime: String = "",
+    val rampDownTime: String = "",
+    val changeLayerTime: String = "",
+    val coneAngleFactor: String = "",
 )
 
 data class FlyerRunState(
@@ -247,7 +247,21 @@ class FlyerViewModel(private val repository: BtSessionRepository) : ViewModel() 
     fun updateSettings(s: FlyerSettings) { _settings.value = s }
 
     fun resetToDefaults() {
-        _settings.value = FlyerSettings()
+        _settings.value = FlyerSettings(
+            spindleSpeed = "650",
+            draft = "8.8",
+            twistPerInch = "1.4",
+            rtf = "1.0",
+            layers = "50",
+            maxHeight = "270",
+            rovingWidth = "1.2",
+            deltaBobbinDia = "1.1",
+            bareBobbinDia = "48",
+            rampUpTime = "12",
+            rampDownTime = "12",
+            changeLayerTime = "800",
+            coneAngleFactor = "1.0",
+        )
         viewModelScope.launch {
             _defaultApplied.value = true
             kotlinx.coroutines.delay(2_000)

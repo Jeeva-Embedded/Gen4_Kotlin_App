@@ -11,14 +11,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class RingSettings(
-    val inputYarn: String = "30",
-    val outputYarnDia: String = "",   // blank = auto-computed from inputYarn
-    val spindleSpeed: String = "8000",
-    val twistPerInch: String = "20",
-    val packageHeight: String = "150",
-    val diaBuildFactor: String = "0.5",
-    val windingCloseness: String = "100",
-    val windingOffsetCoils: String = "2",
+    val inputYarn: String = "",
+    val outputYarnDia: String = "",
+    val spindleSpeed: String = "",
+    val twistPerInch: String = "",
+    val packageHeight: String = "",
+    val diaBuildFactor: String = "",
+    val windingCloseness: String = "",
+    val windingOffsetCoils: String = "",
 )
 
 data class RingRunState(

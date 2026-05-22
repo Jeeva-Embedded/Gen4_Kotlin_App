@@ -1,7 +1,9 @@
 package com.gen4.spinning.machines.df
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,8 +14,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.gen4.spinning.ui.components.StatusBox
+import com.gen4.spinning.ui.theme.SpinColors
+
+private fun alSensorLabel(active: Boolean) = if (active) "ON" else "OFF"
 
 private fun substateLabel(s: UByte): String = when (s) {
     0x00u.toUByte() -> "Idle"
@@ -50,47 +56,57 @@ fun DfStatusScreen(vm: DfViewModel) {
 
         when {
             isRunning -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    StatusBox(
+                        label = "Length (m)",
+                        value = "${"%.1f".format(runState.currentLength)} m",
+                        modifier = Modifier.weight(1f),
+                    )
+                    StatusBox(
+                        label = "Delivery (m/min)",
+                        value = if (runState.deliveryMtrsPerMin > 0f)
+                            "${"%.1f".format(runState.deliveryMtrsPerMin)} m/min"
+                        else
+                            "${settings.deliverySpeed} m/min",
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
                 StatusBox(
-                    label = "Length (m)",
-                    value = "${"%.1f".format(runState.currentLength)} m",
+                    label = "AL Sensor",
+                    value = alSensorLabel(runState.alSensorActive),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(8.dp))
-                StatusBox(
-                    label = "Delivery (m/min)",
-                    value = if (runState.deliveryMtrsPerMin > 0f)
-                                "${"%.1f".format(runState.deliveryMtrsPerMin)} m/min"
-                            else
-                                "${settings.deliverySpeed} m/min",
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(16.dp))
                 Box(modifier = Modifier.weight(1f)) {
                     DfCarousel(vm = vm)
                 }
             }
             isPaused -> {
-                StatusBox(
-                    label = "Length (m)",
-                    value = "${"%.1f".format(runState.currentLength)} m",
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                if (runState.pauseReason.isNotEmpty()) {
+                if (runState.pauseLength != 0f) {
+                    StatusBox(
+                        label = "Pause Length (m)",
+                        value = "${"%.1f".format(runState.pauseLength)} m",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     Spacer(Modifier.height(8.dp))
+                }
+                if (runState.pauseReason.isNotEmpty()) {
                     StatusBox(
                         label = "Pause Reason",
                         value = runState.pauseReason,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                }
-                if (runState.pauseLength != 0f) {
                     Spacer(Modifier.height(8.dp))
-                    StatusBox(
-                        label = "Pause Length",
-                        value = "${"%.1f".format(runState.pauseLength)} m",
-                        modifier = Modifier.fillMaxWidth(),
-                    )
                 }
+                StatusBox(
+                    label = "AL Sensor",
+                    value = alSensorLabel(runState.alSensorActive),
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
             isError -> {
                 StatusBox(

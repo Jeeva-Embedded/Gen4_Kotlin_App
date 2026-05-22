@@ -11,12 +11,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class DfSettings(
-    val deliverySpeed: String = "80",
-    val draft: String = "8.0",
-    val lengthLimit: String = "400",
-    val rampUpTime: String = "6",
-    val rampDownTime: String = "6",
-    val creelTensionFactor: String = "1.0",
+    val deliverySpeed: String = "",
+    val draft: String = "",
+    val lengthLimit: String = "",
+    val rampUpTime: String = "",
+    val rampDownTime: String = "",
+    val creelTensionFactor: String = "",
 )
 
 data class DfRunState(
@@ -27,6 +27,15 @@ data class DfRunState(
     val pauseLength: Float = 0f,
     val errorSource: String = "",
     val errorReason: String = "",
+    val alSensorActive: Boolean = false,
+)
+
+data class DfAlSettings(
+    val kp: String = "",
+    val sliver6: String = "",
+    val sliver5: String = "",
+    val sliver4: String = "",
+    val target: String = "",
 )
 
 data class DfDiagnosisState(
@@ -67,7 +76,18 @@ class DfViewModel(private val repository: BtSessionRepository) : ViewModel() {
     private val _logMessage = MutableStateFlow<String?>(null)
     val logMessage: StateFlow<String?> = _logMessage.asStateFlow()
 
+    private val _alSettings = MutableStateFlow(DfAlSettings())
+    val alSettings: StateFlow<DfAlSettings> = _alSettings.asStateFlow()
+
+    private val _alReadResult = MutableStateFlow<Boolean?>(null)
+    val alReadResult: StateFlow<Boolean?> = _alReadResult.asStateFlow()
+
+    private val _alSaveResult = MutableStateFlow<Boolean?>(null)
+    val alSaveResult: StateFlow<Boolean?> = _alSaveResult.asStateFlow()
+
     @Volatile private var readPending = false
+    @Volatile private var alGetPending = false
+    @Volatile private var alSavePending = false
 
     init {
         viewModelScope.launch { collectFrames() }
@@ -82,6 +102,7 @@ class DfViewModel(private val repository: BtSessionRepository) : ViewModel() {
                         val ss = frame.subState
                         var deliveryMtrsPerMin = _runState.value.deliveryMtrsPerMin
                         var currentLength = _runState.value.currentLength
+                        var alSensorActive = _runState.value.alSensorActive
                         var pauseReason = ""
                         var pauseLength = 0f
                         var errorSource = ""
@@ -107,6 +128,7 @@ class DfViewModel(private val repository: BtSessionRepository) : ViewModel() {
                                     currentLength = tlv.valueAsFloat()
                                     carouselFields["currentLength"] = "%.1f".format(tlv.valueAsFloat())
                                 }
+                                DfProtocol.TLV_AL_SENSOR -> alSensorActive = tlv.valueAsUInt16().toInt() == 1
                                 0x01u.toUByte() -> when (ss) {
                                     0x02u.toUByte() -> pauseReason = dfPauseReason(tlv.valueAsUInt16().toInt())
                                     0x03u.toUByte() -> errorReason = dfErrorReason(tlv.valueAsUInt16().toInt())
@@ -121,6 +143,7 @@ class DfViewModel(private val repository: BtSessionRepository) : ViewModel() {
                             substate = ss,
                             deliveryMtrsPerMin = deliveryMtrsPerMin,
                             currentLength = currentLength,
+                            alSensorActive = alSensorActive,
                             pauseReason = pauseReason,
                             pauseLength = pauseLength,
                             errorSource = errorSource,
@@ -190,6 +213,38 @@ class DfViewModel(private val repository: BtSessionRepository) : ViewModel() {
                             _carouselData.value = _carouselData.value + (motorId to data)
                         }
                     }
+
+                    DfProtocol.INFO_AL_RESPONSE -> {
+                        var al = _alSettings.value
+                        for (tlv in frame.tlvs) {
+                            when (tlv.type) {
+                                DfProtocol.TLV_AL_KP      -> al = al.copy(kp = "%.4f".format(tlv.valueAsFloat()))
+                                DfProtocol.TLV_AL_SLIVER6 -> al = al.copy(sliver6 = tlv.valueAsUInt16().toString())
+                                DfProtocol.TLV_AL_SLIVER5 -> al = al.copy(sliver5 = tlv.valueAsUInt16().toString())
+                                DfProtocol.TLV_AL_SLIVER4 -> al = al.copy(sliver4 = tlv.valueAsUInt16().toString())
+                                DfProtocol.TLV_AL_TARGET  -> al = al.copy(target = "%.2f".format(tlv.valueAsFloat()))
+                            }
+                        }
+                        _alSettings.value = al
+                        when {
+                            alGetPending -> {
+                                alGetPending = false
+                                viewModelScope.launch {
+                                    _alReadResult.value = true
+                                    kotlinx.coroutines.delay(2_000)
+                                    _alReadResult.value = null
+                                }
+                            }
+                            alSavePending -> {
+                                alSavePending = false
+                                viewModelScope.launch {
+                                    _alSaveResult.value = true
+                                    kotlinx.coroutines.delay(2_000)
+                                    _alSaveResult.value = null
+                                }
+                            }
+                        }
+                    }
                 }
             } catch (_: Exception) { }
         }
@@ -197,16 +252,30 @@ class DfViewModel(private val repository: BtSessionRepository) : ViewModel() {
 
     private suspend fun collectSaveResponse() {
         repository.saveResponse.collect { ok ->
-            _saveResult.value = ok
-            kotlinx.coroutines.delay(2_000)
-            _saveResult.value = null
+            if (alSavePending) {
+                alSavePending = false
+                _alSaveResult.value = ok
+                kotlinx.coroutines.delay(2_000)
+                _alSaveResult.value = null
+            } else {
+                _saveResult.value = ok
+                kotlinx.coroutines.delay(2_000)
+                _saveResult.value = null
+            }
         }
     }
 
     fun updateSettings(s: DfSettings) { _settings.value = s }
 
     fun resetToDefaults() {
-        _settings.value = DfSettings()
+        _settings.value = DfSettings(
+            deliverySpeed = "80",
+            draft = "8.0",
+            lengthLimit = "400",
+            rampUpTime = "6",
+            rampDownTime = "6",
+            creelTensionFactor = "1.0",
+        )
         viewModelScope.launch {
             _defaultApplied.value = true
             kotlinx.coroutines.delay(2_000)
@@ -253,6 +322,47 @@ class DfViewModel(private val repository: BtSessionRepository) : ViewModel() {
             _logMessage.value = null
         }
     }
+    fun updateAlSettings(s: DfAlSettings) { _alSettings.value = s }
+
+    fun sendAlGet() {
+        alGetPending = true
+        repository.sendFrame(DfProtocol.buildAlGetFrame())
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(3_000)
+            if (alGetPending) {
+                alGetPending = false
+                _alReadResult.value = false
+                kotlinx.coroutines.delay(2_000)
+                _alReadResult.value = null
+            }
+        }
+    }
+
+    fun sendAlSave(): Boolean {
+        val s = _alSettings.value
+        val kp      = s.kp.toFloatOrNull()      ?: return false
+        val sliver6 = s.sliver6.toIntOrNull()   ?: return false
+        val sliver5 = s.sliver5.toIntOrNull()   ?: return false
+        val sliver4 = s.sliver4.toIntOrNull()   ?: return false
+        val target  = s.target.toFloatOrNull()  ?: return false
+        if (kp <= 0f || kp > 1f)       return false
+        if (sliver6 >= sliver5)         return false
+        if (sliver5 >= sliver4)         return false
+        if (target <= 4f || target > 6f) return false
+        alSavePending = true
+        repository.sendFrame(DfProtocol.buildAlSaveFrame(kp, sliver6, sliver5, sliver4, target))
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(3_000)
+            if (alSavePending) {
+                alSavePending = false
+                _alSaveResult.value = false
+                kotlinx.coroutines.delay(2_000)
+                _alSaveResult.value = null
+            }
+        }
+        return true
+    }
+
     fun disconnect() { repository.disconnect() }
 
     private fun dfPauseReason(code: Int): String = when (code) {
