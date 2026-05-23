@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -15,7 +16,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,11 +24,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.gen4.spinning.ui.components.StatusBox
 import com.gen4.spinning.ui.theme.SpinColors
 import kotlinx.coroutines.delay
 
@@ -54,10 +55,13 @@ fun DfCarousel(vm: DfViewModel) {
         }
     }
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxSize(),
+    ) {
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().weight(1f),
         ) { page ->
             val entry = dfPages[page]
             val data = carouselData[entry.motorId] ?: emptyMap()
@@ -81,33 +85,46 @@ fun DfCarousel(vm: DfViewModel) {
 
 @Composable
 private fun DfCarouselCard(title: String, data: Map<String, String>, isProduction: Boolean = false) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = Color(0xFFF5F5F5),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 8.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(SpinColors.Blue, SpinColors.LightGreen),
+                    start = Offset(0f, 0f),
+                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
+                )
+            ),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
             Spacer(Modifier.height(12.dp))
             if (isProduction) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatusBox(label = "Output (m)",       value = data["outputMtrs"]  ?: "-", modifier = Modifier.weight(1f))
-                    StatusBox(label = "Total Power (W)",  value = data["totalPower"]  ?: "-", modifier = Modifier.weight(1f))
-                }
+                DfCarouselRow("Output (m)",      data["outputMtrs"] ?: "-")
+                DfCarouselRow("Total Power (W)", data["totalPower"] ?: "-")
             } else {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatusBox(label = "RPM",        value = data["rpm"]        ?: "-", modifier = Modifier.weight(1f))
-                    StatusBox(label = "Current(A)", value = data["current"]    ?: "-", modifier = Modifier.weight(1f))
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatusBox(label = "Motor°C",    value = data["motorTemp"]  ?: "-", modifier = Modifier.weight(1f))
-                    StatusBox(label = "MOSFET°C",   value = data["mosfetTemp"] ?: "-", modifier = Modifier.weight(1f))
-                }
+                DfCarouselRow("RPM",      data["rpm"]        ?: "-")
+                DfCarouselRow("Current",  data["current"]    ?: "-")
+                DfCarouselRow("Motor°C",  data["motorTemp"]  ?: "-")
+                DfCarouselRow("MOSFET°C", data["mosfetTemp"] ?: "-")
             }
         }
+    }
+}
+
+@Composable
+private fun DfCarouselRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(text = label, color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
+        Text(text = value, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = Color.White)
     }
 }

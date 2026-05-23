@@ -102,6 +102,7 @@ fun StatusBox(
     label: String,
     value: String,
     modifier: Modifier = Modifier,
+    valueColor: Color = Color.Unspecified,
 ) {
     Surface(
         shape = RoundedCornerShape(8.dp),
@@ -113,7 +114,7 @@ fun StatusBox(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(text = label, fontSize = 12.sp, color = Color.Gray)
-            Text(text = value, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(text = value, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = valueColor)
         }
     }
 }

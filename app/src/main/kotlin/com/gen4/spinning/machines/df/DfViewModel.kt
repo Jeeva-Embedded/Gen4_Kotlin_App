@@ -38,6 +38,14 @@ data class DfAlSettings(
     val target: String = "",
 )
 
+enum class CalibrationStatus { IDLE, COLLECTING, DONE }
+
+data class DfCalibrationState(
+    val status: CalibrationStatus = CalibrationStatus.IDLE,
+    val avgValue: Int = 0,
+    val count: Int = 0,
+)
+
 data class DfDiagnosisState(
     val isDiagnosing: Boolean = false,
     val motorLabel: String = "",
@@ -84,6 +92,9 @@ class DfViewModel(private val repository: BtSessionRepository) : ViewModel() {
 
     private val _alSaveResult = MutableStateFlow<Boolean?>(null)
     val alSaveResult: StateFlow<Boolean?> = _alSaveResult.asStateFlow()
+
+    private val _calibrationState = MutableStateFlow(DfCalibrationState())
+    val calibrationState: StateFlow<DfCalibrationState> = _calibrationState.asStateFlow()
 
     @Volatile private var readPending = false
     @Volatile private var alGetPending = false
@@ -212,6 +223,21 @@ class DfViewModel(private val repository: BtSessionRepository) : ViewModel() {
                         if (motorId != 0x00u.toUByte()) {
                             _carouselData.value = _carouselData.value + (motorId to data)
                         }
+                    }
+
+                    DfProtocol.INFO_CAL_RESULT -> {
+                        var avg = 0; var count = 0
+                        for (tlv in frame.tlvs) {
+                            when (tlv.type) {
+                                DfProtocol.TLV_CAL_AVG   -> avg   = tlv.valueAsUInt16().toInt()
+                                DfProtocol.TLV_CAL_COUNT -> count = tlv.valueAsUInt16().toInt()
+                            }
+                        }
+                        _calibrationState.value = DfCalibrationState(
+                            status = CalibrationStatus.DONE,
+                            avgValue = avg,
+                            count = count,
+                        )
                     }
 
                     DfProtocol.INFO_AL_RESPONSE -> {
@@ -361,6 +387,16 @@ class DfViewModel(private val repository: BtSessionRepository) : ViewModel() {
             }
         }
         return true
+    }
+
+    fun sendCalibrationStart() {
+        _calibrationState.value = DfCalibrationState(status = CalibrationStatus.COLLECTING)
+        repository.sendFrame(FrameCodec.build(0x04u, 0x05u))
+    }
+
+    fun sendCalibrationStop() {
+        _calibrationState.value = DfCalibrationState(status = CalibrationStatus.IDLE)
+        repository.sendFrame(FrameCodec.build(0x04u, 0x02u))
     }
 
     fun disconnect() { repository.disconnect() }

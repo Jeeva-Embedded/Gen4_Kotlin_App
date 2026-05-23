@@ -116,7 +116,7 @@ private fun AppNavHost(app: Gen4SpinningApp) {
                         else      -> Screen.SelectMachine.route
                     }
                     navController.navigate(dest) {
-                        popUpTo(Screen.SelectMachine.route)
+                        popUpTo(Screen.SelectMachine.route) { inclusive = true }
                     }
                 },
                 onBack = { navController.popBackStack() },

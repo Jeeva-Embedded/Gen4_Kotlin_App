@@ -1,9 +1,7 @@
 package com.gen4.spinning.machines.carding
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,9 +12,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.gen4.spinning.ui.components.SensorIndicator
 import com.gen4.spinning.ui.components.StatusBox
+import com.gen4.spinning.ui.theme.SpinColors
 
 private fun substateLabel(s: UByte): String = when (s) {
     0x00u.toUByte() -> "Idle"
@@ -64,26 +63,38 @@ fun CardingStatusScreen(vm: CardingViewModel) {
                 )
                 Spacer(Modifier.height(12.dp))
                 // Flutter uses coilerSensor (TLV 0x0C) for "Carding Duct" and ductSensor (TLV 0x0B) for "Auto Feed Duct"
-                Row(
+                StatusBox(
+                    label = "Carding Duct",
+                    value = if (runState.coilerSensor) "Open" else "Blocked",
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                ) {
-                    SensorIndicator(label = "Carding Duct", active = runState.coilerSensor)
-                    SensorIndicator(label = "Auto Feed Duct", active = runState.ductSensor)
-                }
+                    valueColor = if (runState.coilerSensor) SpinColors.LightGreen else Color.Red,
+                )
+                Spacer(Modifier.height(8.dp))
+                StatusBox(
+                    label = "Auto Feed Duct",
+                    value = if (runState.ductSensor) "Open" else "Blocked",
+                    modifier = Modifier.fillMaxWidth(),
+                    valueColor = if (runState.ductSensor) SpinColors.LightGreen else Color.Red,
+                )
                 Spacer(Modifier.height(16.dp))
                 Box(modifier = Modifier.weight(1f)) {
                     CardingCarousel(vm = vm)
                 }
             }
             isPaused -> {
-                Row(
+                StatusBox(
+                    label = "Carding Duct",
+                    value = if (runState.coilerSensor) "Open" else "Blocked",
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                ) {
-                    SensorIndicator(label = "Carding Duct", active = runState.coilerSensor)
-                    SensorIndicator(label = "Auto Feed Duct", active = runState.ductSensor)
-                }
+                    valueColor = if (runState.coilerSensor) SpinColors.LightGreen else Color.Red,
+                )
+                Spacer(Modifier.height(8.dp))
+                StatusBox(
+                    label = "Auto Feed Duct",
+                    value = if (runState.ductSensor) "Open" else "Blocked",
+                    modifier = Modifier.fillMaxWidth(),
+                    valueColor = if (runState.ductSensor) SpinColors.LightGreen else Color.Red,
+                )
                 if (runState.pauseReason.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
                     StatusBox(
@@ -94,13 +105,19 @@ fun CardingStatusScreen(vm: CardingViewModel) {
                 }
             }
             isHoming -> {
-                Row(
+                StatusBox(
+                    label = "Carding Duct",
+                    value = if (runState.coilerSensor) "Open" else "Blocked",
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                ) {
-                    SensorIndicator(label = "Carding Duct", active = runState.coilerSensor)
-                    SensorIndicator(label = "Auto Feed Duct", active = runState.ductSensor)
-                }
+                    valueColor = if (runState.coilerSensor) SpinColors.LightGreen else Color.Red,
+                )
+                Spacer(Modifier.height(8.dp))
+                StatusBox(
+                    label = "Auto Feed Duct",
+                    value = if (runState.ductSensor) "Open" else "Blocked",
+                    modifier = Modifier.fillMaxWidth(),
+                    valueColor = if (runState.ductSensor) SpinColors.LightGreen else Color.Red,
+                )
             }
             isError -> {
                 StatusBox(

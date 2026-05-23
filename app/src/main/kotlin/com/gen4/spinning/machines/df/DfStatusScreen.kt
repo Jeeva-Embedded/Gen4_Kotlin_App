@@ -79,6 +79,7 @@ fun DfStatusScreen(vm: DfViewModel) {
                     label = "AL Sensor",
                     value = alSensorLabel(runState.alSensorActive),
                     modifier = Modifier.fillMaxWidth(),
+                    valueColor = if (runState.alSensorActive) SpinColors.LightGreen else Color.Red,
                 )
                 Spacer(Modifier.height(8.dp))
                 Box(modifier = Modifier.weight(1f)) {
@@ -106,6 +107,7 @@ fun DfStatusScreen(vm: DfViewModel) {
                     label = "AL Sensor",
                     value = alSensorLabel(runState.alSensorActive),
                     modifier = Modifier.fillMaxWidth(),
+                    valueColor = if (runState.alSensorActive) SpinColors.LightGreen else Color.Red,
                 )
             }
             isError -> {

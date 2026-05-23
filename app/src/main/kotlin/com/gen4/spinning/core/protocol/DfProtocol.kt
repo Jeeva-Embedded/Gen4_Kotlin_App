@@ -11,7 +11,7 @@ object DfProtocol {
     const val TLV_RAMP_DOWN_TIME: UByte = 0x74u
     const val TLV_CREEL_TENSION_FACTOR: UByte = 0x75u
 
-    // Running state TLV types (shared with other machines for common fields)
+    // Running state TLV types
     const val TLV_MOTOR_TEMP: UByte = 0x04u
     const val TLV_MOSFET_TEMP: UByte = 0x05u
     const val TLV_CURRENT: UByte = 0x06u
@@ -21,6 +21,22 @@ object DfProtocol {
     const val TLV_TOTAL_POWER: UByte = 0x0Au
     const val TLV_DELIVERY_MTRS_PER_MIN: UByte = 0x0Du
     const val TLV_CURRENT_LENGTH: UByte = 0x0Eu
+    const val TLV_AL_SENSOR: UByte = 0x0Fu   // RUN_SENSOR_TOGGLE_STATE
+
+    // AL settings TLV types (firmware: BT_Fns.h)
+    const val TLV_AL_KP: UByte = 0x20u
+    const val TLV_AL_SLIVER6: UByte = 0x21u
+    const val TLV_AL_SLIVER5: UByte = 0x22u
+    const val TLV_AL_SLIVER4: UByte = 0x23u
+    const val TLV_AL_TARGET: UByte = 0x24u
+
+    // Calibration result TLV types (INFO=0x15)
+    const val TLV_CAL_AVG: UByte = 0x30u
+    const val TLV_CAL_COUNT: UByte = 0x31u
+
+    // Info bytes from mainboard → app
+    const val INFO_AL_RESPONSE: UByte = 0x12u   // AL settings GET response
+    const val INFO_CAL_RESULT: UByte = 0x15u    // calibration result
 
     // Motor IDs for diagnostics
     const val MOTOR_FRONT_ROLLER: UByte = 0x01u
@@ -47,6 +63,20 @@ object DfProtocol {
             FrameCodec.buildTlvInt(TLV_RAMP_UP_TIME, rampUpTime.toUShort()),
             FrameCodec.buildTlvInt(TLV_RAMP_DOWN_TIME, rampDownTime.toUShort()),
             FrameCodec.buildTlvFloat(TLV_CREEL_TENSION_FACTOR, creelTensionFactor),
+        )
+    )
+
+    fun buildAlGetFrame(): String = FrameCodec.build(0x13u, 0x01u)
+
+    fun buildAlSaveFrame(
+        kp: Float, sliver6: Int, sliver5: Int, sliver4: Int, target: Float,
+    ): String = FrameCodec.build(
+        0x11u, 0x01u, listOf(
+            FrameCodec.buildTlvFloat(TLV_AL_KP, kp),
+            FrameCodec.buildTlvInt(TLV_AL_SLIVER6, sliver6.toUShort()),
+            FrameCodec.buildTlvInt(TLV_AL_SLIVER5, sliver5.toUShort()),
+            FrameCodec.buildTlvInt(TLV_AL_SLIVER4, sliver4.toUShort()),
+            FrameCodec.buildTlvFloat(TLV_AL_TARGET, target),
         )
     )
 }

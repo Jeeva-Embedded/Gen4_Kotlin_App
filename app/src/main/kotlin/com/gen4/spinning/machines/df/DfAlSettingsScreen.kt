@@ -4,11 +4,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -22,6 +28,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import com.gen4.spinning.ui.components.FieldInput
 import com.gen4.spinning.ui.components.GradientAppBar
 import com.gen4.spinning.ui.components.GradientButton
@@ -32,12 +42,20 @@ fun DfAlSettingsScreen(vm: DfViewModel, onBack: () -> Unit) {
     val alSettings by vm.alSettings.collectAsState()
     val alReadResult by vm.alReadResult.collectAsState()
     val alSaveResult by vm.alSaveResult.collectAsState()
+    val calibration by vm.calibrationState.collectAsState()
     var validationError by remember { mutableStateOf<String?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            GradientAppBar(title = "AL Settings", onBack = onBack)
+            GradientAppBar(
+                title = "AL Settings",
+                actions = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = androidx.compose.ui.graphics.Color.White)
+                    }
+                },
+            )
 
             Column(
                 modifier = Modifier
@@ -107,6 +125,61 @@ fun DfAlSettingsScreen(vm: DfViewModel, onBack: () -> Unit) {
                         },
                         modifier = Modifier.weight(1f),
                     )
+                }
+
+                Spacer(Modifier.height(8.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(8.dp))
+
+                Text(
+                    text = "AL Sensor Calibration",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+
+                Text(
+                    text = when (calibration.status) {
+                        CalibrationStatus.IDLE       -> "Idle"
+                        CalibrationStatus.COLLECTING -> "Collecting..."
+                        CalibrationStatus.DONE       -> "Done"
+                    },
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                )
+
+                if (calibration.status == CalibrationStatus.COLLECTING) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+
+                if (calibration.status == CalibrationStatus.DONE) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = calibration.avgValue.toString(),
+                            fontSize = 56.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            text = "avg  (${calibration.count} samples)",
+                            fontSize = 13.sp,
+                            color = Color.Gray,
+                        )
+                    }
+                }
+
+                if (calibration.status == CalibrationStatus.COLLECTING) {
+                    OutlinedButton(
+                        onClick = { vm.sendCalibrationStop() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("STOP")
+                    }
+                } else {
+                    Button(
+                        onClick = { vm.sendCalibrationStart() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("START")
+                    }
                 }
             }
         }
