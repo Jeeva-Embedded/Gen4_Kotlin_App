@@ -1,7 +1,6 @@
 package com.gen4.spinning.machines.ring
 
 import android.app.Activity
-import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,7 +13,6 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,16 +22,13 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -64,10 +59,6 @@ fun RingDashboard(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences("gen4_devices", Context.MODE_PRIVATE) }
-    val connectedAddress = (connectionState as? ConnectionState.Connected)?.deviceAddress ?: ""
-    var showRenameDialog by remember { mutableStateOf(false) }
-    var renameText by remember(connectedAddress) { mutableStateOf(prefs.getString(connectedAddress, "") ?: "") }
 
     val tabs = listOf("Status", "Settings", "Tests", "Options")
     val icons = listOf(Icons.Default.Dashboard, Icons.Default.Settings, Icons.Default.Build, Icons.Default.Tune)
@@ -78,27 +69,11 @@ fun RingDashboard(
         else -> Unit
     }
 
-    if (showRenameDialog) {
-        AlertDialog(
-            onDismissRequest = { showRenameDialog = false },
-            title = { Text("Device Name") },
-            text = {
-                OutlinedTextField(value = renameText, onValueChange = { renameText = it }, label = { Text("Name") }, singleLine = true)
-            },
-            confirmButton = {
-                TextButton(onClick = { prefs.edit().putString(connectedAddress, renameText).apply(); showRenameDialog = false }) { Text("Save") }
-            },
-            dismissButton = { TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") } }
-        )
-    }
-
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
                 Spacer(Modifier.height(16.dp))
-                NavigationDrawerItem(label = { Text("Change Device Name") }, selected = false,
-                    onClick = { scope.launch { drawerState.close() }; showRenameDialog = true })
                 NavigationDrawerItem(label = { Text("Exit App") }, selected = false,
                     onClick = { (context as? Activity)?.finish() })
             }

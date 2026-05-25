@@ -83,14 +83,14 @@ fun RingCarousel(vm: RingViewModel) {
 private fun RingCarouselCard(title: String, isProduction: Boolean, data: Map<String, String>) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFFF5F5F5),
+        color = SpinColors.Blue,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(text = title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(text = title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
             Spacer(Modifier.height(12.dp))
 
             if (isProduction) {
@@ -117,7 +117,7 @@ private fun CarouselRow(label: String, value: String, unit: String) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(text = label, color = Color.Gray, fontSize = 14.sp)
-        Text(text = if (unit.isNotEmpty()) "$value $unit" else value, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+        Text(text = label, color = Color.White.copy(alpha = 0.8f), fontSize = 15.sp)
+        Text(text = if (unit.isNotEmpty()) "$value $unit" else value, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = Color.White)
     }
 }

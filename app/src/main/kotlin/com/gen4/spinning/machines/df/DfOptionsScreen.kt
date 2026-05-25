@@ -37,8 +37,12 @@ import com.gen4.spinning.ui.theme.SpinColors
 
 @Composable
 fun DfOptionsScreen(vm: DfViewModel) {
+    val runState     by vm.runState.collectAsState()
+    val isIdle       = runState.substate == 0x00u.toUByte()
     val logEnabled   by vm.logEnabled.collectAsState()
     val logMessage   by vm.logMessage.collectAsState()
+    val alEnabled    by vm.alEnabled.collectAsState()
+    val alMessage    by vm.alMessage.collectAsState()
     val alSettings   by vm.alSettings.collectAsState()
     val alReadResult by vm.alReadResult.collectAsState()
     val alSaveResult by vm.alSaveResult.collectAsState()
@@ -74,6 +78,33 @@ fun DfOptionsScreen(vm: DfViewModel) {
 
             HorizontalDivider()
 
+            // ── Auto Leveller ─────────────────────────────────────────────────
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("Auto Leveller", color = SpinColors.Blue, fontSize = 18.sp)
+                Switch(
+                    checked = alEnabled,
+                    onCheckedChange = { vm.sendAutoLeveller(it) },
+                    enabled = isIdle,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = SpinColors.LightGreen,
+                        checkedTrackColor = SpinColors.LightGreen.copy(alpha = 0.4f),
+                    ),
+                )
+            }
+            if (!isIdle) {
+                Text(
+                    text = "Go to Idle to change",
+                    color = Color.Red,
+                    fontSize = 12.sp,
+                )
+            }
+
+            HorizontalDivider()
+
             // ── AL Settings ───────────────────────────────────────────────────
             Text("AL Settings", color = SpinColors.Blue, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
 
@@ -83,17 +114,17 @@ fun DfOptionsScreen(vm: DfViewModel) {
                 onValueChange = { vm.updateAlSettings(alSettings.copy(kp = it)) },
             )
             FieldInput(
-                label = "Sliver 6 Threshold",
+                label = "Sliver N+1 Threshold",
                 value = alSettings.sliver6,
                 onValueChange = { vm.updateAlSettings(alSettings.copy(sliver6 = it)) },
             )
             FieldInput(
-                label = "Sliver 5 Threshold",
+                label = "Sliver N Threshold",
                 value = alSettings.sliver5,
                 onValueChange = { vm.updateAlSettings(alSettings.copy(sliver5 = it)) },
             )
             FieldInput(
-                label = "Sliver 4 Threshold",
+                label = "Sliver N-1 Threshold",
                 value = alSettings.sliver4,
                 onValueChange = { vm.updateAlSettings(alSettings.copy(sliver4 = it)) },
             )
@@ -121,7 +152,7 @@ fun DfOptionsScreen(vm: DfViewModel) {
                     onClick = {
                         val ok = vm.sendAlSave()
                         validationError = if (ok) null else
-                            "Check: KP (0 < KP ≤ 1), Sliver 6 < Sliver 5 < Sliver 4, Target (4 < g/m ≤ 6)"
+                            "Check: KP (0 < KP ≤ 1), Sliver N+1 < Sliver N < Sliver N-1, Target (4 < g/m ≤ 6)"
                     },
                     modifier = Modifier.weight(1f),
                 )
@@ -195,7 +226,7 @@ fun DfOptionsScreen(vm: DfViewModel) {
             (if (ok) "AL Settings Received" else "No Response") to ok
         }
 
-        (alBanner ?: logMessage?.let { it to true })?.let { (msg, success) ->
+        (alBanner ?: logMessage?.let { it to true } ?: alMessage?.let { it to true })?.let { (msg, success) ->
             SaveBanner(
                 message = msg,
                 success = success,

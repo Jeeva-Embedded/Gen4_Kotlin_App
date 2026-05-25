@@ -46,6 +46,7 @@ private val dfPages = listOf(
 @Composable
 fun DfCarousel(vm: DfViewModel) {
     val carouselData by vm.carouselData.collectAsState()
+    val runState by vm.runState.collectAsState()
     val pagerState = rememberPagerState(pageCount = { dfPages.size })
 
     LaunchedEffect(pagerState.currentPage) {
@@ -65,7 +66,12 @@ fun DfCarousel(vm: DfViewModel) {
         ) { page ->
             val entry = dfPages[page]
             val data = carouselData[entry.motorId] ?: emptyMap()
-            DfCarouselCard(title = entry.label, data = data, isProduction = entry.motorId == 0x0Au.toUByte())
+            DfCarouselCard(
+                title = entry.label,
+                data = data,
+                isProduction = entry.motorId == 0x0Au.toUByte(),
+                alSensorActive = runState.alSensorActive,
+            )
         }
 
         Spacer(Modifier.height(8.dp))
@@ -84,19 +90,13 @@ fun DfCarousel(vm: DfViewModel) {
 }
 
 @Composable
-private fun DfCarouselCard(title: String, data: Map<String, String>, isProduction: Boolean = false) {
+private fun DfCarouselCard(title: String, data: Map<String, String>, isProduction: Boolean = false, alSensorActive: Boolean = false) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 8.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(SpinColors.Blue, SpinColors.LightGreen),
-                    start = Offset(0f, 0f),
-                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
-                )
-            ),
+            .background(SpinColors.Blue),
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -108,6 +108,11 @@ private fun DfCarouselCard(title: String, data: Map<String, String>, isProductio
             if (isProduction) {
                 DfCarouselRow("Output (m)",      data["outputMtrs"] ?: "-")
                 DfCarouselRow("Total Power (W)", data["totalPower"] ?: "-")
+                DfCarouselRow(
+                    label = "AL",
+                    value = if (alSensorActive) "ON" else "OFF",
+                    valueColor = if (alSensorActive) SpinColors.LightGreen else Color.Red,
+                )
             } else {
                 DfCarouselRow("RPM",      data["rpm"]        ?: "-")
                 DfCarouselRow("Current",  data["current"]    ?: "-")
@@ -119,12 +124,12 @@ private fun DfCarouselCard(title: String, data: Map<String, String>, isProductio
 }
 
 @Composable
-private fun DfCarouselRow(label: String, value: String) {
+private fun DfCarouselRow(label: String, value: String, valueColor: Color = Color.White) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(text = label, color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
-        Text(text = value, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = Color.White)
+        Text(text = label, color = Color.White.copy(alpha = 0.8f), fontSize = 15.sp)
+        Text(text = value, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = valueColor)
     }
 }

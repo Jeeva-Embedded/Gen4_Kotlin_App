@@ -84,6 +84,12 @@ class DfViewModel(private val repository: BtSessionRepository) : ViewModel() {
     private val _logMessage = MutableStateFlow<String?>(null)
     val logMessage: StateFlow<String?> = _logMessage.asStateFlow()
 
+    private val _alEnabled = MutableStateFlow(false)
+    val alEnabled: StateFlow<Boolean> = _alEnabled.asStateFlow()
+
+    private val _alMessage = MutableStateFlow<String?>(null)
+    val alMessage: StateFlow<String?> = _alMessage.asStateFlow()
+
     private val _alSettings = MutableStateFlow(DfAlSettings())
     val alSettings: StateFlow<DfAlSettings> = _alSettings.asStateFlow()
 
@@ -346,6 +352,16 @@ class DfViewModel(private val repository: BtSessionRepository) : ViewModel() {
             _logMessage.value = if (enabled) "Log Enabled" else "Log Disabled"
             kotlinx.coroutines.delay(2_000)
             _logMessage.value = null
+        }
+    }
+
+    fun sendAutoLeveller(enabled: Boolean) {
+        _alEnabled.value = enabled
+        repository.sendFrame(FrameCodec.build(0x16u, if (enabled) 0x01u else 0x00u))
+        viewModelScope.launch {
+            _alMessage.value = if (enabled) "Auto Leveller Enabled" else "Auto Leveller Disabled"
+            kotlinx.coroutines.delay(2_000)
+            _alMessage.value = null
         }
     }
     fun updateAlSettings(s: DfAlSettings) { _alSettings.value = s }

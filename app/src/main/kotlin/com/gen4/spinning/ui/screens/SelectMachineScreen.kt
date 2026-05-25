@@ -1,17 +1,21 @@
 package com.gen4.spinning.ui.screens
 
+import android.app.Activity
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -21,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -28,55 +33,56 @@ import androidx.compose.ui.unit.sp
 import com.gen4.spinning.ui.components.GradientAppBar
 import com.gen4.spinning.ui.theme.SpinColors
 
-private data class MachineEntry(val label: String, val route: String)
-
-private val machines = listOf(
-    MachineEntry("Carding", "carding"),
-    MachineEntry("Draw Frame", "df"),
-    MachineEntry("Flyer Frame", "flyer"),
-    MachineEntry("Ring Doubler", "ring"),
-)
-
 @Composable
 fun SelectMachineScreen(onMachineSelected: (String) -> Unit) {
+    val context = LocalContext.current
+    val exit = { (context as? Activity)?.finish() }
+
+    BackHandler { exit() }
+
     Scaffold(
-        topBar = { GradientAppBar(title = "Select Machine") },
+        topBar = {
+            GradientAppBar(
+                title = "Select Machine",
+                actions = {
+                    IconButton(onClick = { exit() }) {
+                        Icon(Icons.Default.PowerSettingsNew, contentDescription = "Exit", tint = Color.White)
+                    }
+                },
+            )
+        },
         containerColor = Color.White,
     ) { padding ->
         Box(
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
             contentAlignment = Alignment.Center,
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    MachineTile("Carding",    { onMachineSelected("carding") }, Modifier.weight(1f))
-                    MachineTile("Draw Frame", { onMachineSelected("df") },      Modifier.weight(1f))
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    MachineTile("Flyer Frame",  { onMachineSelected("flyer") }, Modifier.weight(1f))
-                    MachineTile("Ring Doubler", { onMachineSelected("ring") },  Modifier.weight(1f))
-                }
+                MachineTile("Carding",      { onMachineSelected("carding") })
+                MachineTile("Draw Frame",   { onMachineSelected("df") })
+                MachineTile("Flyer Frame",  { onMachineSelected("flyer") })
+                MachineTile("Ring Doubler", { onMachineSelected("ring") })
             }
         }
     }
 }
 
 @Composable
-private fun MachineTile(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun MachineTile(label: String, onClick: () -> Unit) {
     Surface(
         shape = RoundedCornerShape(12.dp),
         shadowElevation = 4.dp,
-        modifier = modifier
-            .height(130.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(90.dp)
             .clickable(onClick = onClick),
     ) {
         Box(
@@ -94,10 +100,9 @@ private fun MachineTile(label: String, onClick: () -> Unit, modifier: Modifier =
             Text(
                 text = label,
                 color = Color.White,
-                fontSize = 18.sp,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(8.dp),
             )
         }
     }

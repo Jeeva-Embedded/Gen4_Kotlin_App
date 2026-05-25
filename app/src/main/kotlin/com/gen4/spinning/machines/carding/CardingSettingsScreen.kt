@@ -49,13 +49,13 @@ private fun validateSettings(settings: CardingSettings): String? {
 @Composable
 fun CardingSettingsScreen(vm: CardingViewModel, onNavigatePid: () -> Unit) {
     val settings by vm.settings.collectAsState()
+    val runState by vm.runState.collectAsState()
     val saveResult by vm.saveResult.collectAsState()
     val readResult by vm.readResult.collectAsState()
     val defaultApplied by vm.defaultApplied.collectAsState()
-    val allowChange by vm.settingsChangeAllowed.collectAsState()
+    val isIdle = runState.substate == 0x00u.toUByte()
     var showParams by remember { mutableStateOf(false) }
     var validationError by remember { mutableStateOf<String?>(null) }
-
     if (showParams) {
         CardingInternalParamsDialog(settings = settings, onDismiss = { showParams = false })
     }
@@ -98,21 +98,21 @@ fun CardingSettingsScreen(vm: CardingViewModel, onNavigatePid: () -> Unit) {
                 label = "Cylinder Speed (RPM)",
                 value = settings.cylSpeed,
                 onValueChange = { vm.updateSettings(settings.copy(cylSpeed = it)) },
-                enabled = allowChange,
+                enabled = isIdle,
             )
             Spacer(Modifier.height(8.dp))
             FieldInput(
                 label = "Beater Speed (RPM)",
                 value = settings.btrSpeed,
                 onValueChange = { vm.updateSettings(settings.copy(btrSpeed = it)) },
-                enabled = allowChange,
+                enabled = isIdle,
             )
             Spacer(Modifier.height(8.dp))
             FieldInput(
                 label = "Picker Cylinder Speed (RPM)",
                 value = settings.pickerCylSpeed,
                 onValueChange = { vm.updateSettings(settings.copy(pickerCylSpeed = it)) },
-                enabled = allowChange,
+                enabled = isIdle,
             )
             Spacer(Modifier.height(8.dp))
             FieldInput(
@@ -142,13 +142,11 @@ fun CardingSettingsScreen(vm: CardingViewModel, onNavigatePid: () -> Unit) {
                 success = it,
             )
         }
-
         SettingsToolbar(
             onRead = { vm.sendRead() },
             onAll = { vm.resetToDefaults() },
             onSave = {
-                val err = validateSettings(settings)
-                if (err != null) validationError = err else vm.sendSave()
+                val err = validateSettings(settings); if (err != null) validationError = err else vm.sendSave()
             },
             onPid = onNavigatePid,
             onLimits = { showParams = true },

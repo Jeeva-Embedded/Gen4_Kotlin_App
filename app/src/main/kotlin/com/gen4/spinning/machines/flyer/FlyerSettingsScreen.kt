@@ -12,11 +12,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -60,11 +62,15 @@ private fun validateSettings(settings: FlyerSettings): String? {
 @Composable
 fun FlyerSettingsScreen(vm: FlyerViewModel, onNavigatePid: () -> Unit) {
     val settings by vm.settings.collectAsState()
+    val runState by vm.runState.collectAsState()
     val saveResult by vm.saveResult.collectAsState()
     val readResult by vm.readResult.collectAsState()
     val defaultApplied by vm.defaultApplied.collectAsState()
+    val isIdle = runState.substate == 0x00u.toUByte()
     var showParams by remember { mutableStateOf(false) }
     var validationError by remember { mutableStateOf<String?>(null) }
+    var showIdleWarning by remember { mutableStateOf(false) }
+    LaunchedEffect(showIdleWarning) { if (showIdleWarning) { delay(2_000); showIdleWarning = false } }
 
     if (showParams) {
         FlyerInternalParamsDialog(settings = settings, onDismiss = { showParams = false })
@@ -82,56 +88,57 @@ fun FlyerSettingsScreen(vm: FlyerViewModel, onNavigatePid: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp)) {
             FieldInput(label = "Spindle Speed (RPM)", value = settings.spindleSpeed,
-                onValueChange = { vm.updateSettings(settings.copy(spindleSpeed = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(spindleSpeed = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Draft", value = settings.draft,
-                onValueChange = { vm.updateSettings(settings.copy(draft = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(draft = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Twist Per Inch", value = settings.twistPerInch,
-                onValueChange = { vm.updateSettings(settings.copy(twistPerInch = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(twistPerInch = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "RTF", value = settings.rtf,
-                onValueChange = { vm.updateSettings(settings.copy(rtf = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(rtf = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Layers", value = settings.layers,
-                onValueChange = { vm.updateSettings(settings.copy(layers = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(layers = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Max Height (mm)", value = settings.maxHeight,
-                onValueChange = { vm.updateSettings(settings.copy(maxHeight = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(maxHeight = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Roving Width (mm)", value = settings.rovingWidth,
-                onValueChange = { vm.updateSettings(settings.copy(rovingWidth = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(rovingWidth = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Delta Bobbin Dia (mm)", value = settings.deltaBobbinDia,
-                onValueChange = { vm.updateSettings(settings.copy(deltaBobbinDia = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(deltaBobbinDia = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Bare Bobbin Dia (mm)", value = settings.bareBobbinDia,
-                onValueChange = { vm.updateSettings(settings.copy(bareBobbinDia = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(bareBobbinDia = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Ramp Up Time (s)", value = settings.rampUpTime,
-                onValueChange = { vm.updateSettings(settings.copy(rampUpTime = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(rampUpTime = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Ramp Down Time (s)", value = settings.rampDownTime,
-                onValueChange = { vm.updateSettings(settings.copy(rampDownTime = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(rampDownTime = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Change Layer Time (ms)", value = settings.changeLayerTime,
-                onValueChange = { vm.updateSettings(settings.copy(changeLayerTime = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(changeLayerTime = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Cone Angle Factor", value = settings.coneAngleFactor,
-                onValueChange = { vm.updateSettings(settings.copy(coneAngleFactor = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(coneAngleFactor = it)) }, enabled = isIdle)
             Spacer(Modifier.height(16.dp))
         }
 
         readResult?.let { SaveBanner(message = if (it) "Settings received" else "Settings not received", success = it) }
         defaultApplied?.let { SaveBanner(message = "Defaults received", success = true) }
         saveResult?.let { SaveBanner(message = if (it) "Settings saved successfully" else "Save failed", success = it) }
+        if (showIdleWarning) SaveBanner(message = "Go to Idle to change settings", success = false)
 
         SettingsToolbar(
             onRead = { vm.sendRead() },
             onAll = { vm.resetToDefaults() },
             onSave = {
-                val err = validateSettings(settings)
-                if (err != null) validationError = err else vm.sendSave()
+                if (!isIdle) { showIdleWarning = true }
+                else { val err = validateSettings(settings); if (err != null) validationError = err else vm.sendSave() }
             },
             onPid = onNavigatePid,
             onLimits = { showParams = true },

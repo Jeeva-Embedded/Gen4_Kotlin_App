@@ -12,11 +12,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -49,11 +51,15 @@ private fun validateSettings(settings: DfSettings): String? {
 @Composable
 fun DfSettingsScreen(vm: DfViewModel, onNavigatePid: () -> Unit) {
     val settings by vm.settings.collectAsState()
+    val runState by vm.runState.collectAsState()
     val saveResult by vm.saveResult.collectAsState()
     val readResult by vm.readResult.collectAsState()
     val defaultApplied by vm.defaultApplied.collectAsState()
+    val isIdle = runState.substate == 0x00u.toUByte()
     var showParams by remember { mutableStateOf(false) }
     var validationError by remember { mutableStateOf<String?>(null) }
+    var showIdleWarning by remember { mutableStateOf(false) }
+    LaunchedEffect(showIdleWarning) { if (showIdleWarning) { delay(2_000); showIdleWarning = false } }
 
     if (showParams) {
         DfInternalParamsDialog(settings = settings, onDismiss = { showParams = false })
@@ -73,35 +79,36 @@ fun DfSettingsScreen(vm: DfViewModel, onNavigatePid: () -> Unit) {
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
         ) {
             FieldInput(label = "Delivery Speed (m/min)", value = settings.deliverySpeed,
-                onValueChange = { vm.updateSettings(settings.copy(deliverySpeed = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(deliverySpeed = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Draft", value = settings.draft,
-                onValueChange = { vm.updateSettings(settings.copy(draft = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(draft = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Length Limit (m)", value = settings.lengthLimit,
-                onValueChange = { vm.updateSettings(settings.copy(lengthLimit = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(lengthLimit = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Ramp Up Time (s)", value = settings.rampUpTime,
-                onValueChange = { vm.updateSettings(settings.copy(rampUpTime = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(rampUpTime = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Ramp Down Time (s)", value = settings.rampDownTime,
-                onValueChange = { vm.updateSettings(settings.copy(rampDownTime = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(rampDownTime = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Creel Tension Factor", value = settings.creelTensionFactor,
-                onValueChange = { vm.updateSettings(settings.copy(creelTensionFactor = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(creelTensionFactor = it)) }, enabled = isIdle)
             Spacer(Modifier.height(16.dp))
         }
 
         readResult?.let { SaveBanner(message = if (it) "Settings received" else "Settings not received", success = it) }
         defaultApplied?.let { SaveBanner(message = "Defaults received", success = true) }
         saveResult?.let { SaveBanner(message = if (it) "Settings saved successfully" else "Save failed", success = it) }
+        if (showIdleWarning) SaveBanner(message = "Go to Idle to change settings", success = false)
 
         SettingsToolbar(
             onRead = { vm.sendRead() },
             onAll = { vm.resetToDefaults() },
             onSave = {
-                val err = validateSettings(settings)
-                if (err != null) validationError = err else vm.sendSave()
+                if (!isIdle) { showIdleWarning = true }
+                else { val err = validateSettings(settings); if (err != null) validationError = err else vm.sendSave() }
             },
             onPid = onNavigatePid,
             onLimits = { showParams = true },

@@ -93,13 +93,7 @@ private fun FlyerCarouselCard(title: String, isProduction: Boolean, data: Map<St
             .fillMaxSize()
             .padding(horizontal = 8.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(SpinColors.Blue, SpinColors.LightGreen),
-                    start = Offset(0f, 0f),
-                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
-                )
-            ),
+            .background(SpinColors.Blue),
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -128,7 +122,7 @@ private fun FlyerCarouselRow(label: String, value: String, unit: String) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(text = label, color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
-        Text(text = if (unit.isNotEmpty()) "$value $unit" else value, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = Color.White)
+        Text(text = label, color = Color.White.copy(alpha = 0.8f), fontSize = 15.sp)
+        Text(text = if (unit.isNotEmpty()) "$value $unit" else value, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = Color.White)
     }
 }

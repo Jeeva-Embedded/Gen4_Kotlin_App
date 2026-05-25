@@ -15,8 +15,8 @@
         android:name=".Gen4SpinningApp"
         android:allowBackup="true"
         android:label="Gen4 Spinning"
-        android:roundIcon="@drawable/logo"
-        android:icon="@drawable/logo"
+        android:roundIcon="@drawable/logo_icon"
+        android:icon="@drawable/logo_icon"
         android:supportsRtl="true"
         android:hardwareAccelerated="true"
         android:theme="@style/Theme.Gen4Spinning">

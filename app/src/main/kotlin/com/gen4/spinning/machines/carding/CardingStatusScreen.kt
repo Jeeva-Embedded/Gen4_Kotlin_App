@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -77,7 +78,7 @@ fun CardingStatusScreen(vm: CardingViewModel) {
                     valueColor = if (runState.ductSensor) SpinColors.LightGreen else Color.Red,
                 )
                 Spacer(Modifier.height(16.dp))
-                Box(modifier = Modifier.weight(1f)) {
+                Box(modifier = Modifier.size(220.dp)) {
                     CardingCarousel(vm = vm)
                 }
             }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -66,7 +67,7 @@ fun FlyerStatusScreen(vm: FlyerViewModel) {
                 Spacer(Modifier.height(16.dp))
                 LiftAnimation(leftLift = runState.leftLift, rightLift = runState.rightLift)
                 Spacer(Modifier.height(16.dp))
-                Box(modifier = Modifier.weight(1f)) {
+                Box(modifier = Modifier.size(220.dp)) {
                     FlyerCarousel(vm = vm)
                 }
             }

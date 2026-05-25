@@ -72,19 +72,19 @@ fun DfAlSettingsScreen(vm: DfViewModel, onBack: () -> Unit) {
                 )
 
                 FieldInput(
-                    label = "Sliver 6 Threshold",
+                    label = "Sliver N+1 Threshold",
                     value = alSettings.sliver6,
                     onValueChange = { vm.updateAlSettings(alSettings.copy(sliver6 = it)) },
                 )
 
                 FieldInput(
-                    label = "Sliver 5 Threshold",
+                    label = "Sliver N Threshold",
                     value = alSettings.sliver5,
                     onValueChange = { vm.updateAlSettings(alSettings.copy(sliver5 = it)) },
                 )
 
                 FieldInput(
-                    label = "Sliver 4 Threshold",
+                    label = "Sliver N-1 Threshold",
                     value = alSettings.sliver4,
                     onValueChange = { vm.updateAlSettings(alSettings.copy(sliver4 = it)) },
                 )
@@ -121,7 +121,7 @@ fun DfAlSettingsScreen(vm: DfViewModel, onBack: () -> Unit) {
                         onClick = {
                             val ok = vm.sendAlSave()
                             validationError = if (ok) null else
-                                "Check: KP (0 < KP ≤ 1), Sliver 6 < Sliver 5 < Sliver 4, Target (4 < g/m ≤ 6)"
+                                "Check: KP (0 < KP ≤ 1), Sliver N+1 < Sliver N < Sliver N-1, Target (4 < g/m ≤ 6)"
                         },
                         modifier = Modifier.weight(1f),
                     )

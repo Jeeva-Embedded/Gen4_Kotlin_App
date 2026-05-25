@@ -193,6 +193,7 @@ fun SettingsToolbar(
     onSave: () -> Unit,
     onPid: () -> Unit,
     onLimits: (() -> Unit)?,
+    saveEnabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -207,7 +208,7 @@ fun SettingsToolbar(
         if (onAll != null) {
             ToolbarIconButton(icon = Icons.Default.History, label = "Default", tint = SpinColors.Blue, onClick = onAll)
         }
-        ToolbarIconButton(icon = Icons.Default.Save,    label = "Save",   tint = SpinColors.LightGreen, onClick = onSave)
+        ToolbarIconButton(icon = Icons.Default.Save,    label = "Save",   tint = SpinColors.LightGreen, onClick = onSave, enabled = saveEnabled)
         ToolbarIconButton(icon = Icons.Default.Tune,    label = "PID",    tint = SpinColors.Blue,       onClick = onPid)
         if (onLimits != null) {
             ToolbarIconButton(icon = Icons.Default.Search, label = "Parameters", tint = Color.Gray, onClick = onLimits)

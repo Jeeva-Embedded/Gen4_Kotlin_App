@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -67,22 +68,23 @@ fun DfStatusScreen(vm: DfViewModel) {
                     )
                     StatusBox(
                         label = "Delivery (m/min)",
-                        value = if (runState.deliveryMtrsPerMin > 0f)
-                            "${"%.1f".format(runState.deliveryMtrsPerMin)} m/min"
-                        else
-                            "${settings.deliverySpeed} m/min",
+                        value = when {
+                            runState.deliveryMtrsPerMin > 0f -> "${"%.1f".format(runState.deliveryMtrsPerMin)} m/min"
+                            settings.deliverySpeed.isNotEmpty() -> "${settings.deliverySpeed} m/min"
+                            else -> "—"
+                        },
                         modifier = Modifier.weight(1f),
                     )
                 }
                 Spacer(Modifier.height(8.dp))
                 StatusBox(
-                    label = "AL Sensor",
+                    label = "Auto Leveller",
                     value = alSensorLabel(runState.alSensorActive),
                     modifier = Modifier.fillMaxWidth(),
                     valueColor = if (runState.alSensorActive) SpinColors.LightGreen else Color.Red,
                 )
                 Spacer(Modifier.height(8.dp))
-                Box(modifier = Modifier.weight(1f)) {
+                Box(modifier = Modifier.size(220.dp)) {
                     DfCarousel(vm = vm)
                 }
             }
@@ -104,7 +106,7 @@ fun DfStatusScreen(vm: DfViewModel) {
                     Spacer(Modifier.height(8.dp))
                 }
                 StatusBox(
-                    label = "AL Sensor",
+                    label = "Auto Leveller",
                     value = alSensorLabel(runState.alSensorActive),
                     modifier = Modifier.fillMaxWidth(),
                     valueColor = if (runState.alSensorActive) SpinColors.LightGreen else Color.Red,

@@ -12,11 +12,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -30,9 +32,13 @@ import kotlin.math.PI
 @Composable
 fun RingSettingsScreen(vm: RingViewModel, onNavigatePid: () -> Unit) {
     val settings by vm.settings.collectAsState()
+    val runState by vm.runState.collectAsState()
     val saveResult by vm.saveResult.collectAsState()
     val readResult by vm.readResult.collectAsState()
+    val isIdle = runState.substate == 0x00u.toUByte()
     var showParams by remember { mutableStateOf(false) }
+    var showIdleWarning by remember { mutableStateOf(false) }
+    LaunchedEffect(showIdleWarning) { if (showIdleWarning) { delay(2_000); showIdleWarning = false } }
 
     if (showParams) {
         RingInternalParamsDialog(settings = settings, onDismiss = { showParams = false })
@@ -41,38 +47,39 @@ fun RingSettingsScreen(vm: RingViewModel, onNavigatePid: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp)) {
             FieldInput(label = "Input Yarn (count)", value = settings.inputYarn,
-                onValueChange = { vm.updateSettings(settings.copy(inputYarn = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(inputYarn = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Output Yarn Dia (mm, blank=auto)", value = settings.outputYarnDia,
-                onValueChange = { vm.updateSettings(settings.copy(outputYarnDia = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(outputYarnDia = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Spindle Speed (RPM)", value = settings.spindleSpeed,
-                onValueChange = { vm.updateSettings(settings.copy(spindleSpeed = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(spindleSpeed = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Twist Per Inch", value = settings.twistPerInch,
-                onValueChange = { vm.updateSettings(settings.copy(twistPerInch = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(twistPerInch = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Package Height (mm)", value = settings.packageHeight,
-                onValueChange = { vm.updateSettings(settings.copy(packageHeight = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(packageHeight = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Dia Build Factor", value = settings.diaBuildFactor,
-                onValueChange = { vm.updateSettings(settings.copy(diaBuildFactor = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(diaBuildFactor = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Winding Closeness (%)", value = settings.windingCloseness,
-                onValueChange = { vm.updateSettings(settings.copy(windingCloseness = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(windingCloseness = it)) }, enabled = isIdle)
             Spacer(Modifier.height(8.dp))
             FieldInput(label = "Winding Offset Coils", value = settings.windingOffsetCoils,
-                onValueChange = { vm.updateSettings(settings.copy(windingOffsetCoils = it)) })
+                onValueChange = { vm.updateSettings(settings.copy(windingOffsetCoils = it)) }, enabled = isIdle)
             Spacer(Modifier.height(16.dp))
         }
 
         readResult?.let { SaveBanner(message = "Settings received", success = true) }
         saveResult?.let { SaveBanner(message = if (it) "Settings saved successfully" else "Save failed", success = it) }
+        if (showIdleWarning) SaveBanner(message = "Go to Idle to change settings", success = false)
 
         SettingsToolbar(
             onRead = { vm.sendRead() },
             onAll = null,
-            onSave = { vm.sendSave() },
+            onSave = { if (!isIdle) showIdleWarning = true else vm.sendSave() },
             onPid = onNavigatePid,
             onLimits = { showParams = true },
         )
