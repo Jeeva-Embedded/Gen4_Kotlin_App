@@ -71,7 +71,6 @@ fun DfCarousel(vm: DfViewModel) {
                 isProduction = entry.motorId == 0x0Au.toUByte(),
                 alSensorActive = runState.alSensorActive,
                 currentLengthM = runState.currentLength,
-                deliveryMtrsPerMin = runState.deliveryMtrsPerMin,
             )
         }
 
@@ -97,7 +96,6 @@ private fun DfCarouselCard(
     isProduction: Boolean = false,
     alSensorActive: Boolean = false,
     currentLengthM: Float = 0f,
-    deliveryMtrsPerMin: Float = 0f,
 ) {
     Box(
         modifier = Modifier
@@ -116,14 +114,13 @@ private fun DfCarouselCard(
             if (isProduction) {
                 DfCarouselRow("Total Length (m)", "%.1f".format(currentLengthM))
                 DfCarouselRow("Total Power (W)",  data["totalPower"] ?: "-")
-                DfCarouselRow("Delivery (m/min)", if (deliveryMtrsPerMin > 0f) "%.1f".format(deliveryMtrsPerMin) else "-")
                 Spacer(Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("AL Sensor", color = Color.White.copy(alpha = 0.8f), fontSize = 15.sp)
+                    Text("Auto Leveller", color = Color.White.copy(alpha = 0.8f), fontSize = 15.sp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier

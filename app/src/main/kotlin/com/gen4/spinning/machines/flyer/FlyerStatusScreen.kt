@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -43,71 +42,79 @@ fun FlyerStatusScreen(vm: FlyerViewModel) {
     val isError   = runState.substate == 0x03u.toUByte()
     val isHoming  = runState.substate == 0x04u.toUByte()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Spacer(Modifier.height(8.dp))
-        StatusBox(
-            label = "Status",
-            value = substateLabel(runState.substate).uppercase(),
-            modifier = Modifier.fillMaxWidth(),
-        )
+    Column(modifier = Modifier.fillMaxSize()) {
 
-        when {
-            isRunning -> {
-                Spacer(Modifier.height(12.dp))
-                StatusBox(
-                    label = "Layer",
-                    value = runState.layers.toString(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(16.dp))
-                LiftAnimation(leftLift = runState.leftLift, rightLift = runState.rightLift)
-                Spacer(Modifier.height(16.dp))
-                Box(modifier = Modifier.size(220.dp)) {
-                    FlyerCarousel(vm = vm)
+        // ── Top: status info ─────────────────────────────────────────────────
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Spacer(Modifier.height(8.dp))
+            StatusBox(
+                label = "Status",
+                value = substateLabel(runState.substate).uppercase(),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            when {
+                isRunning -> {
+                    Spacer(Modifier.height(12.dp))
+                    StatusBox(
+                        label = "Layer",
+                        value = runState.layers.toString(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    LiftAnimation(leftLift = runState.leftLift, rightLift = runState.rightLift)
+                }
+                isPaused -> {
+                    Spacer(Modifier.height(12.dp))
+                    StatusBox(
+                        label = "Reason For Pause",
+                        value = runState.pauseReason,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    StatusBox(
+                        label = "Layers",
+                        value = runState.pauseLayer.toString(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                isHoming -> {
+                    Spacer(Modifier.height(16.dp))
+                    LiftAnimation(leftLift = runState.leftLift, rightLift = runState.rightLift)
+                }
+                isError -> {
+                    Spacer(Modifier.height(12.dp))
+                    StatusBox(
+                        label = "Error Information",
+                        value = "${runState.errorInformation} (${runState.errorCode})",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    StatusBox(
+                        label = "Error Source",
+                        value = runState.errorSource,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    StatusBox(
+                        label = "Layers",
+                        value = runState.errorLayer.toString(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
-            isPaused -> {
-                Spacer(Modifier.height(12.dp))
-                StatusBox(
-                    label = "Reason For Pause",
-                    value = runState.pauseReason,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(8.dp))
-                StatusBox(
-                    label = "Layers",
-                    value = runState.pauseLayer.toString(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            isHoming -> {
-                Spacer(Modifier.height(16.dp))
-                LiftAnimation(leftLift = runState.leftLift, rightLift = runState.rightLift)
-            }
-            isError -> {
-                Spacer(Modifier.height(12.dp))
-                StatusBox(
-                    label = "Error Information",
-                    value = "${runState.errorInformation} (${runState.errorCode})",
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(12.dp))
-                StatusBox(
-                    label = "Error Source",
-                    value = runState.errorSource,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(12.dp))
-                StatusBox(
-                    label = "Layers",
-                    value = runState.errorLayer.toString(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+        }
+
+        // ── Bottom: full-width carousel (running only) ────────────────────────
+        if (isRunning) {
+            Box(modifier = Modifier.fillMaxWidth().height(250.dp)) {
+                FlyerCarousel(vm = vm)
             }
         }
     }
@@ -116,7 +123,6 @@ fun FlyerStatusScreen(vm: FlyerViewModel) {
 @Composable
 private fun LiftAnimation(leftLift: Float, rightLift: Float) {
     val diff = leftLift - rightLift
-    // Flutter: angle_rad = (diff/4) * PI/40  →  angle_deg = diff/4 * 180/40
     val angleDeg = (diff / 4f) * (180f / 40f)
 
     Column(

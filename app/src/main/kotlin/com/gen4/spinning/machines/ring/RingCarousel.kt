@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -54,10 +55,13 @@ fun RingCarousel(vm: RingViewModel) {
         }
     }
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxSize(),
+    ) {
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().weight(1f),
         ) { page ->
             val entry = ringPages[page]
             val data = carouselData[entry.motorId] ?: emptyMap()
@@ -84,11 +88,12 @@ private fun RingCarouselCard(title: String, isProduction: Boolean, data: Map<Str
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = SpinColors.Blue,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+        modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
             Text(text = title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
             Spacer(Modifier.height(12.dp))

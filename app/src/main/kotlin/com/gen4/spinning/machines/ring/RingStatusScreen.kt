@@ -1,13 +1,12 @@
 package com.gen4.spinning.machines.ring
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -32,59 +31,68 @@ fun RingStatusScreen(vm: RingViewModel) {
     val isPaused  = runState.substate == 0x02u.toUByte()
     val isError   = runState.substate == 0x03u.toUByte()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Spacer(Modifier.height(8.dp))
-        StatusBox(
-            label = "Status",
-            value = if (runState.substate == 0x00u.toUByte()) "--"
-                    else substateLabel(runState.substate).uppercase(),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(Modifier.height(12.dp))
+    Column(modifier = Modifier.fillMaxSize()) {
 
-        when {
-            isRunning -> {
-                StatusBox(
-                    label = "Doff Percent",
-                    value = "${"%.1f".format(runState.weight)} %",
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(16.dp))
-                RingCarousel(vm = vm)
-            }
-            isPaused -> {
-                StatusBox(
-                    label = "Doff Percent",
-                    value = "${"%.1f".format(runState.weight)} %",
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                if (runState.pauseReason.isNotEmpty()) {
+        // ── Top: status info ─────────────────────────────────────────────────
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Spacer(Modifier.height(8.dp))
+            StatusBox(
+                label = "Status",
+                value = if (runState.substate == 0x00u.toUByte()) "--"
+                        else substateLabel(runState.substate).uppercase(),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(12.dp))
+
+            when {
+                isRunning -> {
+                    StatusBox(
+                        label = "Doff Percent",
+                        value = "${"%.1f".format(runState.weight)} %",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                isPaused -> {
+                    StatusBox(
+                        label = "Doff Percent",
+                        value = "${"%.1f".format(runState.weight)} %",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (runState.pauseReason.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        StatusBox(
+                            label = "Pause Reason",
+                            value = runState.pauseReason,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+                isError -> {
+                    StatusBox(
+                        label = "Error Information",
+                        value = if (runState.errorReason.isNotEmpty()) runState.errorReason else "-",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     Spacer(Modifier.height(8.dp))
                     StatusBox(
-                        label = "Pause Reason",
-                        value = runState.pauseReason,
+                        label = "Error Source",
+                        value = if (runState.errorSource.isNotEmpty()) runState.errorSource else "-",
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
-            isError -> {
-                StatusBox(
-                    label = "Error Information",
-                    value = if (runState.errorReason.isNotEmpty()) runState.errorReason else "-",
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(8.dp))
-                StatusBox(
-                    label = "Error Source",
-                    value = if (runState.errorSource.isNotEmpty()) runState.errorSource else "-",
-                    modifier = Modifier.fillMaxWidth(),
-                )
+        }
+
+        // ── Bottom: full-width carousel (running only) ────────────────────────
+        if (isRunning) {
+            Box(modifier = Modifier.fillMaxWidth().height(250.dp)) {
+                RingCarousel(vm = vm)
             }
         }
     }
