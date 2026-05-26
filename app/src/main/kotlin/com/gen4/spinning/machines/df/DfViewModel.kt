@@ -1,10 +1,16 @@
 package com.gen4.spinning.machines.df
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.gen4.spinning.core.bt.FrameCodec
 import com.gen4.spinning.core.bt.BtSessionRepository
+import com.gen4.spinning.core.logging.LogSession
+import com.gen4.spinning.core.logging.createLogSession
+import com.gen4.spinning.core.logging.dfMotorNames
 import com.gen4.spinning.core.protocol.DfProtocol
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,7 +61,10 @@ data class DfDiagnosisState(
     val power: String = "-",
 )
 
-class DfViewModel(private val repository: BtSessionRepository) : ViewModel() {
+class DfViewModel(app: Application, private val repository: BtSessionRepository) : AndroidViewModel(app) {
+
+    private var logSession: LogSession? = null
+    private var logJob: Job? = null
 
     private val _settings = MutableStateFlow(DfSettings())
     val settings: StateFlow<DfSettings> = _settings.asStateFlow()
@@ -348,11 +357,59 @@ class DfViewModel(private val repository: BtSessionRepository) : ViewModel() {
     fun sendLog(enabled: Boolean) {
         _logEnabled.value = enabled
         repository.sendFrame(FrameCodec.build(0x0Cu, if (enabled) 0x01u else 0x00u))
+        if (enabled) {
+            logSession = createLogSession(getApplication(), "DrawFrame")
+            logJob = viewModelScope.launch {
+                while (true) { delay(5_000); writeLogSnapshot() }
+            }
+        } else {
+            logJob?.cancel(); logJob = null
+            logSession?.close(); logSession = null
+        }
         viewModelScope.launch {
             _logMessage.value = if (enabled) "Log Enabled" else "Log Disabled"
-            kotlinx.coroutines.delay(2_000)
+            delay(2_000)
             _logMessage.value = null
         }
+    }
+
+    private fun writeLogSnapshot() {
+        val session = logSession ?: return
+        val rs = _runState.value
+        val state = dfSubstateLabel(rs.substate)
+        val alStatus = if (rs.alSensorActive) "ON" else "OFF"
+        val pauseState = rs.pauseReason.ifEmpty { "-" }
+        val errorInfo = rs.errorReason.ifEmpty { "-" }
+        val errorSrc = rs.errorSource.ifEmpty { "-" }
+        val delivery = if (rs.deliveryMtrsPerMin > 0f) "%.1f".format(rs.deliveryMtrsPerMin) else "-"
+        val length = "%.1f".format(rs.currentLength)
+        val cd = _carouselData.value
+        if (cd.isEmpty()) {
+            session.writeRow("Draw Frame", state, "-", "-", "-", "-", "-", "-", "-",
+                delivery, length, alStatus, "-", "-", pauseState, errorInfo, errorSrc)
+        } else {
+            for ((motorId, f) in cd) {
+                val name = dfMotorNames[motorId] ?: "Motor ${motorId.toString(16).uppercase()}"
+                val outMtrs = if (motorId == 0x0Au.toUByte()) length else "-"
+                session.writeRow("Draw Frame", state, name,
+                    f["mosfetTemp"] ?: "-", f["motorTemp"] ?: "-", f["rpm"] ?: "-",
+                    f["current"] ?: "-", f["totalPower"] ?: "-", outMtrs,
+                    delivery, length, alStatus, "-", "-", pauseState, errorInfo, errorSrc)
+            }
+        }
+    }
+
+    private fun dfSubstateLabel(s: UByte) = when (s) {
+        0x00u.toUByte() -> "Idle"; 0x01u.toUByte() -> "Running"
+        0x02u.toUByte() -> "Paused"; 0x03u.toUByte() -> "Error"
+        0x04u.toUByte() -> "Homing"; 0x05u.toUByte() -> "Inching"
+        0x06u.toUByte() -> "Can Over"; else -> "Unknown"
+    }
+
+    override fun onCleared() {
+        logJob?.cancel()
+        logSession?.close()
+        super.onCleared()
     }
 
     fun sendAutoLeveller(enabled: Boolean) {

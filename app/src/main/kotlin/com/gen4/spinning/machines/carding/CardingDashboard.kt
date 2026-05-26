@@ -1,6 +1,7 @@
 package com.gen4.spinning.machines.carding
 
 import android.app.Activity
+import android.app.Application
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -51,8 +52,10 @@ fun CardingDashboard(
     repository: BtSessionRepository,
     onDisconnect: () -> Unit,
     onNavigatePid: () -> Unit,
+    onNavigateLogs: () -> Unit,
 ) {
-    val vm: CardingViewModel = viewModel(factory = cardingVmFactory(repository))
+    val app = LocalContext.current.applicationContext as Application
+    val vm: CardingViewModel = viewModel(factory = cardingVmFactory(app, repository))
     val connectionState by repository.connectionState.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -81,6 +84,11 @@ fun CardingDashboard(
         drawerContent = {
             ModalDrawerSheet {
                 Spacer(Modifier.height(16.dp))
+                NavigationDrawerItem(
+                    label = { Text("Log Files") },
+                    selected = false,
+                    onClick = { scope.launch { drawerState.close() }; onNavigateLogs() },
+                )
                 NavigationDrawerItem(
                     label = { Text("Exit App") },
                     selected = false,
@@ -136,9 +144,9 @@ fun CardingDashboard(
     }
 }
 
-fun cardingVmFactory(repository: BtSessionRepository) =
+fun cardingVmFactory(app: Application, repository: BtSessionRepository) =
     object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            CardingViewModel(repository) as T
+            CardingViewModel(app, repository) as T
     }

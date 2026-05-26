@@ -1,6 +1,7 @@
 package com.gen4.spinning.machines.df
 
 import android.app.Activity
+import android.app.Application
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -51,8 +52,10 @@ fun DfDashboard(
     repository: BtSessionRepository,
     onDisconnect: () -> Unit,
     onNavigatePid: () -> Unit,
+    onNavigateLogs: () -> Unit,
 ) {
-    val vm: DfViewModel = viewModel(factory = dfVmFactory(repository))
+    val app = LocalContext.current.applicationContext as Application
+    val vm: DfViewModel = viewModel(factory = dfVmFactory(app, repository))
     val connectionState by repository.connectionState.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -74,6 +77,8 @@ fun DfDashboard(
         drawerContent = {
             ModalDrawerSheet {
                 Spacer(Modifier.height(16.dp))
+                NavigationDrawerItem(label = { Text("Log Files") }, selected = false,
+                    onClick = { scope.launch { drawerState.close() }; onNavigateLogs() })
                 NavigationDrawerItem(label = { Text("Exit App") }, selected = false,
                     onClick = { (context as? Activity)?.finish() })
             }
@@ -123,9 +128,9 @@ fun DfDashboard(
     }
 }
 
-fun dfVmFactory(repository: BtSessionRepository) =
+fun dfVmFactory(app: Application, repository: BtSessionRepository) =
     object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            DfViewModel(repository) as T
+            DfViewModel(app, repository) as T
     }

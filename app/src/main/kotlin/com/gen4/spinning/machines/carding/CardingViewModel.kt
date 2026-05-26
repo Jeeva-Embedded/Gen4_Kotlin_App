@@ -1,11 +1,17 @@
 package com.gen4.spinning.machines.carding
 
+import android.app.Application
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.gen4.spinning.core.bt.BtSessionRepository
 import com.gen4.spinning.core.bt.FrameCodec
+import com.gen4.spinning.core.logging.LogSession
+import com.gen4.spinning.core.logging.cardingMotorNames
+import com.gen4.spinning.core.logging.createLogSession
 import com.gen4.spinning.core.protocol.CardingProtocol
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,7 +48,10 @@ data class CardingDiagnosisState(
     val power: String = "-",
 )
 
-class CardingViewModel(private val repository: BtSessionRepository) : ViewModel() {
+class CardingViewModel(app: Application, private val repository: BtSessionRepository) : AndroidViewModel(app) {
+
+    private var logSession: LogSession? = null
+    private var logJob: Job? = null
 
     private val _settings = MutableStateFlow(CardingSettings())
     val settings: StateFlow<CardingSettings> = _settings.asStateFlow()
@@ -113,7 +122,6 @@ class CardingViewModel(private val repository: BtSessionRepository) : ViewModel(
                                 }
                                 CardingProtocol.TLV_DUCT_SENSOR            -> ductSensor = tlv.valueAsUInt8() == 1u.toUByte()
                                 CardingProtocol.TLV_COILER_SENSOR          -> coilerSensor = tlv.valueAsUInt8() == 1u.toUByte()
-                                // TLV 0x01–0x03 are substate-dependent
                                 0x01u.toUByte() -> when (ss) {
                                     0x02u.toUByte() -> pauseReason = cardingPauseReason(tlv.valueAsUInt16().toInt())
                                     0x03u.toUByte() -> errorInformation = cardingErrorReason(tlv.valueAsUInt16().toInt())
@@ -267,15 +275,65 @@ class CardingViewModel(private val repository: BtSessionRepository) : ViewModel(
 
     fun sendGearbox(substate: UByte) { repository.sendFrame(FrameCodec.build(0x08u, substate)) }
     fun sendRtf(enabled: Boolean) { repository.sendFrame(FrameCodec.build(0x0Bu, if (enabled) 0x01u else 0x00u)) }
+
     fun sendLog(enabled: Boolean) {
         _logEnabled.value = enabled
         repository.sendFrame(FrameCodec.build(0x0Cu, if (enabled) 0x01u else 0x00u))
+        if (enabled) {
+            logSession = createLogSession(getApplication(), "BlowCard")
+            logJob = viewModelScope.launch {
+                while (true) { delay(5_000); writeLogSnapshot() }
+            }
+        } else {
+            logJob?.cancel(); logJob = null
+            logSession?.close(); logSession = null
+        }
         viewModelScope.launch {
             _logMessage.value = if (enabled) "Log Enabled" else "Log Disabled"
-            kotlinx.coroutines.delay(2_000)
+            delay(2_000)
             _logMessage.value = null
         }
     }
+
+    private fun writeLogSnapshot() {
+        val session = logSession ?: return
+        val rs = _runState.value
+        val state = cardingSubstateLabel(rs.substate)
+        val duct = if (rs.ductSensor) "ON" else "OFF"
+        val coiler = if (rs.coilerSensor) "ON" else "OFF"
+        val pauseState = rs.pauseReason.ifEmpty { "-" }
+        val errorInfo = rs.errorInformation.ifEmpty { "-" }
+        val errorSrc = rs.errorSource.ifEmpty { "-" }
+        val delivery = if (rs.deliveryMtrsPerMin > 0f) "%.1f".format(rs.deliveryMtrsPerMin) else "-"
+        val cd = _carouselData.value
+        if (cd.isEmpty()) {
+            session.writeRow("Blow Card", state, "-", "-", "-", "-", "-", "-", "-",
+                delivery, "-", "-", duct, coiler, pauseState, errorInfo, errorSrc)
+        } else {
+            for ((motorId, f) in cd) {
+                val name = cardingMotorNames[motorId] ?: "Motor ${motorId.toString(16).uppercase()}"
+                val outMtrs = if (motorId == 0x0Au.toUByte()) f["outputMtrs"] ?: "-" else "-"
+                session.writeRow("Blow Card", state, name,
+                    f["mosfetTemp"] ?: "-", f["motorTemp"] ?: "-", f["rpm"] ?: "-",
+                    f["current"] ?: "-", f["totalPower"] ?: "-", outMtrs,
+                    delivery, "-", "-", duct, coiler, pauseState, errorInfo, errorSrc)
+            }
+        }
+    }
+
+    private fun cardingSubstateLabel(s: UByte) = when (s) {
+        0x00u.toUByte() -> "Idle"; 0x01u.toUByte() -> "Running"
+        0x02u.toUByte() -> "Paused"; 0x03u.toUByte() -> "Error"
+        0x04u.toUByte() -> "Homing"; 0x05u.toUByte() -> "Inching"
+        else -> "Unknown"
+    }
+
+    override fun onCleared() {
+        logJob?.cancel()
+        logSession?.close()
+        super.onCleared()
+    }
+
     fun disconnect() { repository.disconnect() }
 
     private fun cardingPauseReason(code: Int): String = when (code) {

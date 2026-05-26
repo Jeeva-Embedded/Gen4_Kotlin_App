@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -24,8 +25,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -52,6 +51,7 @@ private val pages = listOf(
 @Composable
 fun CardingCarousel(vm: CardingViewModel) {
     val carouselData by vm.carouselData.collectAsState()
+    val runState by vm.runState.collectAsState()
     val pagerState = rememberPagerState(pageCount = { pages.size })
 
     LaunchedEffect(pagerState.currentPage) {
@@ -71,7 +71,14 @@ fun CardingCarousel(vm: CardingViewModel) {
         ) { index ->
             val page = pages[index]
             val data = carouselData[page.motorId] ?: emptyMap()
-            CarouselCard(label = page.label, isProduction = page.motorId == CardingProtocol.CAROUSEL_PRODUCTION, data = data)
+            CardingCarouselCard(
+                label = page.label,
+                isProduction = page.motorId == CardingProtocol.CAROUSEL_PRODUCTION,
+                data = data,
+                ductSensor = runState.ductSensor,
+                coilerSensor = runState.coilerSensor,
+                deliveryMtrsPerMin = runState.deliveryMtrsPerMin,
+            )
         }
 
         Spacer(Modifier.height(8.dp))
@@ -90,7 +97,14 @@ fun CardingCarousel(vm: CardingViewModel) {
 }
 
 @Composable
-private fun CarouselCard(label: String, isProduction: Boolean, data: Map<String, String>) {
+private fun CardingCarouselCard(
+    label: String,
+    isProduction: Boolean,
+    data: Map<String, String>,
+    ductSensor: Boolean = false,
+    coilerSensor: Boolean = false,
+    deliveryMtrsPerMin: Float = 0f,
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -107,20 +121,44 @@ private fun CarouselCard(label: String, isProduction: Boolean, data: Map<String,
             Spacer(Modifier.height(12.dp))
 
             if (isProduction) {
-                CarouselRow("Total Length (m)", data["outputMtrs"] ?: "–", "m")
-                CarouselRow("Total Power (W)",  data["totalPower"] ?: "–", "W")
+                CarouselRow("Total Length (m)", data["outputMtrs"] ?: "-")
+                CarouselRow("Total Power (W)",  data["totalPower"] ?: "-")
+                CarouselRow("Delivery (m/min)", if (deliveryMtrsPerMin > 0f) "%.1f".format(deliveryMtrsPerMin) else "-")
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SensorDot(label = "Duct", active = ductSensor)
+                    SensorDot(label = "Coiler", active = coilerSensor)
+                }
             } else {
-                CarouselRow("Motor Temp",  data["motorTemp"]  ?: "–", "°C")
-                CarouselRow("MOSFET Temp", data["mosfetTemp"] ?: "–", "°C")
-                CarouselRow("Current",     data["current"]    ?: "–", "A")
-                CarouselRow("RPM",         data["rpm"]        ?: "–", "")
+                CarouselRow("Motor Temp",  data["motorTemp"]  ?: "-")
+                CarouselRow("MOSFET Temp", data["mosfetTemp"] ?: "-")
+                CarouselRow("Current (A)", data["current"]    ?: "-")
+                CarouselRow("RPM",         data["rpm"]        ?: "-")
             }
         }
     }
 }
 
 @Composable
-private fun CarouselRow(label: String, value: String, unit: String) {
+private fun SensorDot(label: String, active: Boolean) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .clip(CircleShape)
+                .background(if (active) SpinColors.LightGreen else Color.Red)
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(label, color = Color.White, fontSize = 13.sp)
+    }
+}
+
+@Composable
+private fun CarouselRow(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -128,6 +166,6 @@ private fun CarouselRow(label: String, value: String, unit: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(text = label, color = Color.White.copy(alpha = 0.8f), fontSize = 15.sp)
-        Text(text = if (unit.isNotEmpty()) "$value $unit" else value, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = Color.White)
+        Text(text = value, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = Color.White)
     }
 }

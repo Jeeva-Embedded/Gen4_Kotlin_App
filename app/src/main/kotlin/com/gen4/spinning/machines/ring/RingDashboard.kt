@@ -1,6 +1,7 @@
 package com.gen4.spinning.machines.ring
 
 import android.app.Activity
+import android.app.Application
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -51,8 +52,10 @@ fun RingDashboard(
     repository: BtSessionRepository,
     onDisconnect: () -> Unit,
     onNavigatePid: () -> Unit,
+    onNavigateLogs: () -> Unit,
 ) {
-    val vm: RingViewModel = viewModel(factory = ringVmFactory(repository))
+    val app = LocalContext.current.applicationContext as Application
+    val vm: RingViewModel = viewModel(factory = ringVmFactory(app, repository))
     val connectionState by repository.connectionState.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -74,6 +77,8 @@ fun RingDashboard(
         drawerContent = {
             ModalDrawerSheet {
                 Spacer(Modifier.height(16.dp))
+                NavigationDrawerItem(label = { Text("Log Files") }, selected = false,
+                    onClick = { scope.launch { drawerState.close() }; onNavigateLogs() })
                 NavigationDrawerItem(label = { Text("Exit App") }, selected = false,
                     onClick = { (context as? Activity)?.finish() })
             }
@@ -123,9 +128,9 @@ fun RingDashboard(
     }
 }
 
-fun ringVmFactory(repository: BtSessionRepository) =
+fun ringVmFactory(app: Application, repository: BtSessionRepository) =
     object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            RingViewModel(repository) as T
+            RingViewModel(app, repository) as T
     }

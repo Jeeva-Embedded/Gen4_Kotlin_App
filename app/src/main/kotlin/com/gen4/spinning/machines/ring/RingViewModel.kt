@@ -1,10 +1,16 @@
 package com.gen4.spinning.machines.ring
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.gen4.spinning.core.bt.FrameCodec
 import com.gen4.spinning.core.bt.BtSessionRepository
+import com.gen4.spinning.core.logging.LogSession
+import com.gen4.spinning.core.logging.createLogSession
+import com.gen4.spinning.core.logging.ringMotorNames
 import com.gen4.spinning.core.protocol.RingProtocol
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,7 +44,10 @@ data class RingDiagnosisState(
     val power: String = "-",
 )
 
-class RingViewModel(private val repository: BtSessionRepository) : ViewModel() {
+class RingViewModel(app: Application, private val repository: BtSessionRepository) : AndroidViewModel(app) {
+
+    private var logSession: LogSession? = null
+    private var logJob: Job? = null
 
     private val _settings = MutableStateFlow(RingSettings())
     val settings: StateFlow<RingSettings> = _settings.asStateFlow()
@@ -57,6 +66,12 @@ class RingViewModel(private val repository: BtSessionRepository) : ViewModel() {
 
     private val _diagnosisState = MutableStateFlow(RingDiagnosisState())
     val diagnosisState: StateFlow<RingDiagnosisState> = _diagnosisState.asStateFlow()
+
+    private val _logEnabled = MutableStateFlow(false)
+    val logEnabled: StateFlow<Boolean> = _logEnabled.asStateFlow()
+
+    private val _logMessage = MutableStateFlow<String?>(null)
+    val logMessage: StateFlow<String?> = _logMessage.asStateFlow()
 
     init {
         viewModelScope.launch { collectFrames() }
@@ -189,7 +204,62 @@ class RingViewModel(private val repository: BtSessionRepository) : ViewModel() {
 
     fun sendGearbox(substate: UByte) { repository.sendFrame(FrameCodec.build(0x08u, substate)) }
     fun sendRtf(enabled: Boolean) { repository.sendFrame(FrameCodec.build(0x0Bu, if (enabled) 0x01u else 0x00u)) }
-    fun sendLog(enabled: Boolean) { repository.sendFrame(FrameCodec.build(0x0Cu, if (enabled) 0x01u else 0x00u)) }
+
+    fun sendLog(enabled: Boolean) {
+        _logEnabled.value = enabled
+        repository.sendFrame(FrameCodec.build(0x0Cu, if (enabled) 0x01u else 0x00u))
+        if (enabled) {
+            logSession = createLogSession(getApplication(), "Ring")
+            logJob = viewModelScope.launch {
+                while (true) { delay(5_000); writeLogSnapshot() }
+            }
+        } else {
+            logJob?.cancel(); logJob = null
+            logSession?.close(); logSession = null
+        }
+        viewModelScope.launch {
+            _logMessage.value = if (enabled) "Log Enabled" else "Log Disabled"
+            delay(2_000)
+            _logMessage.value = null
+        }
+    }
+
+    private fun writeLogSnapshot() {
+        val session = logSession ?: return
+        val rs = _runState.value
+        val state = ringSubstateLabel(rs.substate)
+        val pauseState = rs.pauseReason.ifEmpty { "-" }
+        val errorInfo = rs.errorReason.ifEmpty { "-" }
+        val errorSrc = rs.errorSource.ifEmpty { "-" }
+        val weight = "%.2f".format(rs.weight)
+        val cd = _carouselData.value
+        if (cd.isEmpty()) {
+            session.writeRow("Ring", state, "-", "-", "-", "-", "-", "-", "-",
+                "-", weight, "-", "-", "-", pauseState, errorInfo, errorSrc)
+        } else {
+            for ((motorId, f) in cd) {
+                val name = ringMotorNames[motorId] ?: "Motor ${motorId.toString(16).uppercase()}"
+                val outMtrs = if (motorId == 0x0Au.toUByte()) f["outputMtrs"] ?: "-" else "-"
+                session.writeRow("Ring", state, name,
+                    f["mosfetTemp"] ?: "-", f["motorTemp"] ?: "-", f["rpm"] ?: "-",
+                    f["current"] ?: "-", f["totalPower"] ?: "-", outMtrs,
+                    "-", weight, "-", "-", "-", pauseState, errorInfo, errorSrc)
+            }
+        }
+    }
+
+    private fun ringSubstateLabel(s: UByte) = when (s) {
+        0x00u.toUByte() -> "Idle"; 0x01u.toUByte() -> "Running"
+        0x02u.toUByte() -> "Paused"; 0x03u.toUByte() -> "Error"
+        0x04u.toUByte() -> "Homing"; else -> "Unknown"
+    }
+
+    override fun onCleared() {
+        logJob?.cancel()
+        logSession?.close()
+        super.onCleared()
+    }
+
     fun disconnect() { repository.disconnect() }
 
     private fun ringPauseReason(code: Int): String = when (code) {

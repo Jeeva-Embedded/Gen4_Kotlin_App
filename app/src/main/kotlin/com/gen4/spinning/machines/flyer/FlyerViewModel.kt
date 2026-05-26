@@ -1,10 +1,16 @@
 package com.gen4.spinning.machines.flyer
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.gen4.spinning.core.bt.FrameCodec
 import com.gen4.spinning.core.bt.BtSessionRepository
+import com.gen4.spinning.core.logging.LogSession
+import com.gen4.spinning.core.logging.createLogSession
+import com.gen4.spinning.core.logging.flyerMotorNames
 import com.gen4.spinning.core.protocol.FlyerProtocol
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,7 +54,10 @@ data class FlyerDiagnosisState(
     val power: String = "-",
 )
 
-class FlyerViewModel(private val repository: BtSessionRepository) : ViewModel() {
+class FlyerViewModel(app: Application, private val repository: BtSessionRepository) : AndroidViewModel(app) {
+
+    private var logSession: LogSession? = null
+    private var logJob: Job? = null
 
     private val _settings = MutableStateFlow(FlyerSettings())
     val settings: StateFlow<FlyerSettings> = _settings.asStateFlow()
@@ -116,7 +125,6 @@ class FlyerViewModel(private val repository: BtSessionRepository) : ViewModel() 
                                 FlyerProtocol.TLV_RPM         -> carouselFields["rpm"]        = tlv.valueAsUInt16().toString()
                                 FlyerProtocol.TLV_OUTPUT_MTRS -> carouselFields["outputMtrs"] = "%.1f".format(tlv.valueAsFloat())
                                 FlyerProtocol.TLV_TOTAL_POWER -> carouselFields["totalPower"] = "%.1f".format(tlv.valueAsFloat())
-                                // TLV codes 0x01–0x04 are substate-dependent (running/homing/pause/error share the same codes)
                                 FlyerProtocol.TLV_LEFT_LIFT -> when (ss) {
                                     0x01u.toUByte(), 0x04u.toUByte() -> leftLift = tlv.valueAsFloat()
                                     0x02u.toUByte() -> pauseReason = flyerPauseReason(tlv.valueAsUInt16().toInt())
@@ -300,15 +308,64 @@ class FlyerViewModel(private val repository: BtSessionRepository) : ViewModel() 
     fun sendResetLengthCounter() { repository.sendFrame(FrameCodec.buildResetLengthCounter()) }
     fun sendGearbox(substate: UByte) { repository.sendFrame(FrameCodec.build(0x08u, substate)) }
     fun sendRtf(enabled: Boolean) { repository.sendFrame(FrameCodec.build(0x0Bu, if (enabled) 0x01u else 0x00u)) }
+
     fun sendLog(enabled: Boolean) {
         _logEnabled.value = enabled
         repository.sendFrame(FrameCodec.build(0x0Cu, if (enabled) 0x01u else 0x00u))
+        if (enabled) {
+            logSession = createLogSession(getApplication(), "Flyer")
+            logJob = viewModelScope.launch {
+                while (true) { delay(5_000); writeLogSnapshot() }
+            }
+        } else {
+            logJob?.cancel(); logJob = null
+            logSession?.close(); logSession = null
+        }
         viewModelScope.launch {
             _logMessage.value = if (enabled) "Log Enabled" else "Log Disabled"
-            kotlinx.coroutines.delay(2_000)
+            delay(2_000)
             _logMessage.value = null
         }
     }
+
+    private fun writeLogSnapshot() {
+        val session = logSession ?: return
+        val rs = _runState.value
+        val state = flyerSubstateLabel(rs.substate)
+        val pauseState = rs.pauseReason.ifEmpty { "-" }
+        val errorInfo = rs.errorInformation.ifEmpty { "-" }
+        val errorSrc = rs.errorSource.ifEmpty { "-" }
+        val layers = rs.layers.toString()
+        val liftL = "L:%.1f".format(rs.leftLift)
+        val liftR = "R:%.1f".format(rs.rightLift)
+        val cd = _carouselData.value
+        if (cd.isEmpty()) {
+            session.writeRow("Flyer", state, "-", "-", "-", "-", "-", "-", "-",
+                "-", layers, "-", liftL, liftR, pauseState, errorInfo, errorSrc)
+        } else {
+            for ((motorId, f) in cd) {
+                val name = flyerMotorNames[motorId] ?: "Motor ${motorId.toString(16).uppercase()}"
+                val outMtrs = if (motorId == 0x0Au.toUByte()) f["outputMtrs"] ?: "-" else "-"
+                session.writeRow("Flyer", state, name,
+                    f["mosfetTemp"] ?: "-", f["motorTemp"] ?: "-", f["rpm"] ?: "-",
+                    f["current"] ?: "-", f["totalPower"] ?: "-", outMtrs,
+                    "-", layers, "-", liftL, liftR, pauseState, errorInfo, errorSrc)
+            }
+        }
+    }
+
+    private fun flyerSubstateLabel(s: UByte) = when (s) {
+        0x00u.toUByte() -> "Idle"; 0x01u.toUByte() -> "Running"
+        0x02u.toUByte() -> "Paused"; 0x03u.toUByte() -> "Error"
+        0x04u.toUByte() -> "Homing"; else -> "Unknown"
+    }
+
+    override fun onCleared() {
+        logJob?.cancel()
+        logSession?.close()
+        super.onCleared()
+    }
+
     fun disconnect() { repository.disconnect() }
 
     private fun flyerPauseReason(code: Int): String = when (code) {

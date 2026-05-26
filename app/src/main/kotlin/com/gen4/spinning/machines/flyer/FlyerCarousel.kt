@@ -24,8 +24,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,6 +47,7 @@ private val flyerPages = listOf(
 @Composable
 fun FlyerCarousel(vm: FlyerViewModel) {
     val carouselData by vm.carouselData.collectAsState()
+    val runState by vm.runState.collectAsState()
     val pagerState = rememberPagerState(pageCount = { flyerPages.size })
 
     LaunchedEffect(pagerState.currentPage) {
@@ -68,7 +67,14 @@ fun FlyerCarousel(vm: FlyerViewModel) {
         ) { page ->
             val entry = flyerPages[page]
             val data = carouselData[entry.motorId] ?: emptyMap()
-            FlyerCarouselCard(title = entry.label, isProduction = entry.motorId == 0x0Au.toUByte(), data = data)
+            FlyerCarouselCard(
+                title = entry.label,
+                isProduction = entry.motorId == 0x0Au.toUByte(),
+                data = data,
+                layers = runState.layers.toInt(),
+                leftLift = runState.leftLift,
+                rightLift = runState.rightLift,
+            )
         }
 
         Spacer(Modifier.height(8.dp))
@@ -87,7 +93,14 @@ fun FlyerCarousel(vm: FlyerViewModel) {
 }
 
 @Composable
-private fun FlyerCarouselCard(title: String, isProduction: Boolean, data: Map<String, String>) {
+private fun FlyerCarouselCard(
+    title: String,
+    isProduction: Boolean,
+    data: Map<String, String>,
+    layers: Int = 0,
+    leftLift: Float = 0f,
+    rightLift: Float = 0f,
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -104,25 +117,28 @@ private fun FlyerCarouselCard(title: String, isProduction: Boolean, data: Map<St
             Spacer(Modifier.height(12.dp))
 
             if (isProduction) {
-                FlyerCarouselRow("Output/Spindle", data["outputMtrs"] ?: "–", "m")
-                FlyerCarouselRow("Total Power",    data["totalPower"] ?: "–", "W")
+                FlyerCarouselRow("Output/Spindle (m)", data["outputMtrs"] ?: "-")
+                FlyerCarouselRow("Total Power (W)",    data["totalPower"] ?: "-")
+                FlyerCarouselRow("Layers",             layers.toString())
+                FlyerCarouselRow("Lift L (mm)",        "%.1f".format(leftLift))
+                FlyerCarouselRow("Lift R (mm)",        "%.1f".format(rightLift))
             } else {
-                FlyerCarouselRow("RPM",      data["rpm"]        ?: "–", "")
-                FlyerCarouselRow("Current",  data["current"]    ?: "–", "A")
-                FlyerCarouselRow("Motor°C",  data["motorTemp"]  ?: "–", "°C")
-                FlyerCarouselRow("MOSFET°C", data["mosfetTemp"] ?: "–", "°C")
+                FlyerCarouselRow("RPM",      data["rpm"]        ?: "-")
+                FlyerCarouselRow("Current",  data["current"]    ?: "-")
+                FlyerCarouselRow("Motor°C",  data["motorTemp"]  ?: "-")
+                FlyerCarouselRow("MOSFET°C", data["mosfetTemp"] ?: "-")
             }
         }
     }
 }
 
 @Composable
-private fun FlyerCarouselRow(label: String, value: String, unit: String) {
+private fun FlyerCarouselRow(label: String, value: String) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(text = label, color = Color.White.copy(alpha = 0.8f), fontSize = 15.sp)
-        Text(text = if (unit.isNotEmpty()) "$value $unit" else value, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = Color.White)
+        Text(text = value, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = Color.White)
     }
 }

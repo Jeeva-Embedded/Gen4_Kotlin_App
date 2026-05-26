@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -24,8 +25,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -71,6 +70,8 @@ fun DfCarousel(vm: DfViewModel) {
                 data = data,
                 isProduction = entry.motorId == 0x0Au.toUByte(),
                 alSensorActive = runState.alSensorActive,
+                currentLengthM = runState.currentLength,
+                deliveryMtrsPerMin = runState.deliveryMtrsPerMin,
             )
         }
 
@@ -90,7 +91,14 @@ fun DfCarousel(vm: DfViewModel) {
 }
 
 @Composable
-private fun DfCarouselCard(title: String, data: Map<String, String>, isProduction: Boolean = false, alSensorActive: Boolean = false) {
+private fun DfCarouselCard(
+    title: String,
+    data: Map<String, String>,
+    isProduction: Boolean = false,
+    alSensorActive: Boolean = false,
+    currentLengthM: Float = 0f,
+    deliveryMtrsPerMin: Float = 0f,
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -106,13 +114,32 @@ private fun DfCarouselCard(title: String, data: Map<String, String>, isProductio
             Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
             Spacer(Modifier.height(12.dp))
             if (isProduction) {
-                DfCarouselRow("Output (m)",      data["outputMtrs"] ?: "-")
-                DfCarouselRow("Total Power (W)", data["totalPower"] ?: "-")
-                DfCarouselRow(
-                    label = "AL",
-                    value = if (alSensorActive) "ON" else "OFF",
-                    valueColor = if (alSensorActive) SpinColors.LightGreen else Color.Red,
-                )
+                DfCarouselRow("Total Length (m)", "%.1f".format(currentLengthM))
+                DfCarouselRow("Total Power (W)",  data["totalPower"] ?: "-")
+                DfCarouselRow("Delivery (m/min)", if (deliveryMtrsPerMin > 0f) "%.1f".format(deliveryMtrsPerMin) else "-")
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("AL Sensor", color = Color.White.copy(alpha = 0.8f), fontSize = 15.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .background(if (alSensorActive) SpinColors.LightGreen else Color.Red)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = if (alSensorActive) "ON" else "OFF",
+                            color = if (alSensorActive) SpinColors.LightGreen else Color.Red,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                        )
+                    }
+                }
             } else {
                 DfCarouselRow("RPM",      data["rpm"]        ?: "-")
                 DfCarouselRow("Current",  data["current"]    ?: "-")

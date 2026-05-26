@@ -24,6 +24,7 @@ import com.gen4.spinning.machines.flyer.FlyerDashboard
 import com.gen4.spinning.machines.ring.RingDashboard
 import com.gen4.spinning.shared.PidScreen
 import com.gen4.spinning.ui.screens.BluetoothScreen
+import com.gen4.spinning.ui.screens.LogsScreen
 import com.gen4.spinning.ui.screens.SelectDeviceScreen
 import com.gen4.spinning.ui.screens.SelectMachineScreen
 import com.gen4.spinning.ui.screens.SplashScreen
@@ -45,6 +46,7 @@ sealed class Screen(val route: String) {
     data object Pid : Screen("pid/{machine}") {
         fun go(machine: String) = "pid/$machine"
     }
+    data object Logs : Screen("logs")
 }
 
 class MainActivity : ComponentActivity() {
@@ -141,6 +143,7 @@ private fun AppNavHost(app: Gen4SpinningApp) {
                     }
                 },
                 onNavigatePid = { navController.navigate(Screen.Pid.go("carding")) },
+                onNavigateLogs = { navController.navigate(Screen.Logs.route) },
             )
         }
 
@@ -153,6 +156,7 @@ private fun AppNavHost(app: Gen4SpinningApp) {
                     }
                 },
                 onNavigatePid = { navController.navigate(Screen.Pid.go("df")) },
+                onNavigateLogs = { navController.navigate(Screen.Logs.route) },
             )
         }
 
@@ -165,6 +169,7 @@ private fun AppNavHost(app: Gen4SpinningApp) {
                     }
                 },
                 onNavigatePid = { navController.navigate(Screen.Pid.go("flyer")) },
+                onNavigateLogs = { navController.navigate(Screen.Logs.route) },
             )
         }
 
@@ -177,7 +182,12 @@ private fun AppNavHost(app: Gen4SpinningApp) {
                     }
                 },
                 onNavigatePid = { navController.navigate(Screen.Pid.go("ring")) },
+                onNavigateLogs = { navController.navigate(Screen.Logs.route) },
             )
+        }
+
+        composable(Screen.Logs.route) {
+            LogsScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Screen.Pid.route, arguments = listOf(machineArg)) { back ->
