@@ -58,6 +58,8 @@ class FlyerViewModel(app: Application, private val repository: BtSessionReposito
 
     private var logSession: LogSession? = null
     private var logJob: Job? = null
+    private var logFetchJob: Job? = null
+    private val flyerLogMotors = listOf(0x0Au, 0x01u, 0x02u, 0x03u, 0x04u, 0x08u, 0x09u).map { it.toUByte() }
 
     private val _settings = MutableStateFlow(FlyerSettings())
     val settings: StateFlow<FlyerSettings> = _settings.asStateFlow()
@@ -315,10 +317,19 @@ class FlyerViewModel(app: Application, private val repository: BtSessionReposito
         if (enabled) {
             logSession = createLogSession(getApplication(), "Flyer")
             logJob = viewModelScope.launch {
-                while (true) { delay(5_000); writeLogSnapshot() }
+                while (true) { delay(1_000); writeLogSnapshot() }
+            }
+            logFetchJob = viewModelScope.launch {
+                while (true) {
+                    for (motorId in flyerLogMotors) {
+                        sendCarouselRequest(motorId)
+                        delay(400)
+                    }
+                }
             }
         } else {
             logJob?.cancel(); logJob = null
+            logFetchJob?.cancel(); logFetchJob = null
             logSession?.close(); logSession = null
         }
         viewModelScope.launch {
@@ -339,18 +350,14 @@ class FlyerViewModel(app: Application, private val repository: BtSessionReposito
         val liftL = "L:%.1f".format(rs.leftLift)
         val liftR = "R:%.1f".format(rs.rightLift)
         val cd = _carouselData.value
-        if (cd.isEmpty()) {
-            session.writeRow("Flyer", state, "-", "-", "-", "-", "-", "-", "-",
+        for (motorId in flyerLogMotors) {
+            val name = flyerMotorNames[motorId] ?: "Motor ${motorId.toString(16).uppercase()}"
+            val f = cd[motorId] ?: emptyMap()
+            val outMtrs = if (motorId == 0x0Au.toUByte()) f["outputMtrs"] ?: "-" else "-"
+            session.writeRow("Flyer", state, name,
+                f["mosfetTemp"] ?: "-", f["motorTemp"] ?: "-", f["rpm"] ?: "-",
+                f["current"] ?: "-", f["totalPower"] ?: "-", outMtrs,
                 "-", layers, "-", liftL, liftR, pauseState, errorInfo, errorSrc)
-        } else {
-            for ((motorId, f) in cd) {
-                val name = flyerMotorNames[motorId] ?: "Motor ${motorId.toString(16).uppercase()}"
-                val outMtrs = if (motorId == 0x0Au.toUByte()) f["outputMtrs"] ?: "-" else "-"
-                session.writeRow("Flyer", state, name,
-                    f["mosfetTemp"] ?: "-", f["motorTemp"] ?: "-", f["rpm"] ?: "-",
-                    f["current"] ?: "-", f["totalPower"] ?: "-", outMtrs,
-                    "-", layers, "-", liftL, liftR, pauseState, errorInfo, errorSrc)
-            }
         }
     }
 
@@ -362,6 +369,7 @@ class FlyerViewModel(app: Application, private val repository: BtSessionReposito
 
     override fun onCleared() {
         logJob?.cancel()
+        logFetchJob?.cancel()
         logSession?.close()
         super.onCleared()
     }

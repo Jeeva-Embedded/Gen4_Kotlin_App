@@ -52,6 +52,18 @@ class CardingViewModel(app: Application, private val repository: BtSessionReposi
 
     private var logSession: LogSession? = null
     private var logJob: Job? = null
+    private var logFetchJob: Job? = null
+    private val cardingLogMotors = listOf(
+        CardingProtocol.CAROUSEL_PRODUCTION,
+        CardingProtocol.MOTOR_CYLINDER,
+        CardingProtocol.MOTOR_BEATER,
+        CardingProtocol.MOTOR_CAGE,
+        CardingProtocol.MOTOR_CYLINDER_FEED,
+        CardingProtocol.MOTOR_BEATER_FEED,
+        CardingProtocol.MOTOR_COILER,
+        CardingProtocol.MOTOR_PICKER_CYLINDER,
+        CardingProtocol.MOTOR_AF_FEED,
+    )
 
     private val _settings = MutableStateFlow(CardingSettings())
     val settings: StateFlow<CardingSettings> = _settings.asStateFlow()
@@ -282,10 +294,19 @@ class CardingViewModel(app: Application, private val repository: BtSessionReposi
         if (enabled) {
             logSession = createLogSession(getApplication(), "BlowCard")
             logJob = viewModelScope.launch {
-                while (true) { delay(5_000); writeLogSnapshot() }
+                while (true) { delay(1_000); writeLogSnapshot() }
+            }
+            logFetchJob = viewModelScope.launch {
+                while (true) {
+                    for (motorId in cardingLogMotors) {
+                        sendCarouselRequest(motorId)
+                        delay(400)
+                    }
+                }
             }
         } else {
             logJob?.cancel(); logJob = null
+            logFetchJob?.cancel(); logFetchJob = null
             logSession?.close(); logSession = null
         }
         viewModelScope.launch {
@@ -306,18 +327,14 @@ class CardingViewModel(app: Application, private val repository: BtSessionReposi
         val errorSrc = rs.errorSource.ifEmpty { "-" }
         val delivery = if (rs.deliveryMtrsPerMin > 0f) "%.1f".format(rs.deliveryMtrsPerMin) else "-"
         val cd = _carouselData.value
-        if (cd.isEmpty()) {
-            session.writeRow("Blow Card", state, "-", "-", "-", "-", "-", "-", "-",
+        for (motorId in cardingLogMotors) {
+            val name = cardingMotorNames[motorId] ?: "Motor ${motorId.toString(16).uppercase()}"
+            val f = cd[motorId] ?: emptyMap()
+            val outMtrs = if (motorId == CardingProtocol.CAROUSEL_PRODUCTION) f["outputMtrs"] ?: "-" else "-"
+            session.writeRow("Blow Card", state, name,
+                f["mosfetTemp"] ?: "-", f["motorTemp"] ?: "-", f["rpm"] ?: "-",
+                f["current"] ?: "-", f["totalPower"] ?: "-", outMtrs,
                 delivery, "-", "-", duct, coiler, pauseState, errorInfo, errorSrc)
-        } else {
-            for ((motorId, f) in cd) {
-                val name = cardingMotorNames[motorId] ?: "Motor ${motorId.toString(16).uppercase()}"
-                val outMtrs = if (motorId == 0x0Au.toUByte()) f["outputMtrs"] ?: "-" else "-"
-                session.writeRow("Blow Card", state, name,
-                    f["mosfetTemp"] ?: "-", f["motorTemp"] ?: "-", f["rpm"] ?: "-",
-                    f["current"] ?: "-", f["totalPower"] ?: "-", outMtrs,
-                    delivery, "-", "-", duct, coiler, pauseState, errorInfo, errorSrc)
-            }
         }
     }
 
@@ -330,6 +347,7 @@ class CardingViewModel(app: Application, private val repository: BtSessionReposi
 
     override fun onCleared() {
         logJob?.cancel()
+        logFetchJob?.cancel()
         logSession?.close()
         super.onCleared()
     }

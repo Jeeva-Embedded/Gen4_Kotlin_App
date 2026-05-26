@@ -13,13 +13,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -32,44 +40,77 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gen4.spinning.ui.components.GradientAppBar
 import com.gen4.spinning.ui.theme.SpinColors
+import kotlinx.coroutines.launch
 
 @Composable
-fun SelectMachineScreen(onMachineSelected: (String) -> Unit) {
+fun SelectMachineScreen(
+    onMachineSelected: (String) -> Unit,
+    onNavigateLogs: () -> Unit = {},
+) {
     val context = LocalContext.current
     val exit = { (context as? Activity)?.finish() }
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
-    BackHandler { exit() }
+    BackHandler {
+        if (drawerState.isOpen) scope.launch { drawerState.close() }
+        else exit()
+    }
 
-    Scaffold(
-        topBar = {
-            GradientAppBar(
-                title = "Select Machine",
-                actions = {
-                    IconButton(onClick = { exit() }) {
-                        Icon(Icons.Default.PowerSettingsNew, contentDescription = "Exit", tint = Color.White)
-                    }
-                },
-            )
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                Text(
+                    text = "Menu",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    modifier = Modifier.padding(16.dp),
+                )
+                NavigationDrawerItem(
+                    label = { Text("Log Files") },
+                    icon = { Icon(Icons.Default.Description, contentDescription = null) },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateLogs()
+                    },
+                )
+            }
         },
-        containerColor = Color.White,
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentAlignment = Alignment.Center,
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Scaffold(
+            topBar = {
+                GradientAppBar(
+                    title = "Select Machine",
+                    navigationIcon = {
+                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            Icon(Icons.Default.Menu, contentDescription = "Menu", tint = Color.White)
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { exit() }) {
+                            Icon(Icons.Default.PowerSettingsNew, contentDescription = "Exit", tint = Color.White)
+                        }
+                    },
+                )
+            },
+            containerColor = Color.White,
+        ) { padding ->
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center,
             ) {
-                MachineTile("Carding",      { onMachineSelected("carding") })
-                MachineTile("Draw Frame",   { onMachineSelected("df") })
-                MachineTile("Flyer Frame",  { onMachineSelected("flyer") })
-                MachineTile("Ring Doubler", { onMachineSelected("ring") })
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    MachineTile("Carding",      { onMachineSelected("carding") })
+                    MachineTile("Draw Frame",   { onMachineSelected("df") })
+                    MachineTile("Flyer Frame",  { onMachineSelected("flyer") })
+                    MachineTile("Ring Doubler", { onMachineSelected("ring") })
+                }
             }
         }
     }

@@ -44,77 +44,96 @@ fun FlyerStatusScreen(vm: FlyerViewModel) {
 
     Column(modifier = Modifier.fillMaxSize()) {
 
-        // ── Top: status info ─────────────────────────────────────────────────
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Spacer(Modifier.height(8.dp))
-            StatusBox(
-                label = "Status",
-                value = substateLabel(runState.substate).uppercase(),
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            when {
-                isRunning -> {
-                    Spacer(Modifier.height(12.dp))
+        if (isRunning) {
+            // ── Status info (natural height, no weight) ──────────────────────
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                StatusBox(
+                    label = "Status",
+                    value = substateLabel(runState.substate).uppercase(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                StatusBox(
+                    label = "Layer",
+                    value = runState.layers.toString(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     StatusBox(
-                        label = "Layer",
-                        value = runState.layers.toString(),
-                        modifier = Modifier.fillMaxWidth(),
+                        label = "Lift L (mm)",
+                        value = "%.1f".format(runState.leftLift),
+                        modifier = Modifier.weight(1f),
                     )
-                    Spacer(Modifier.height(16.dp))
-                    LiftAnimation(leftLift = runState.leftLift, rightLift = runState.rightLift)
-                }
-                isPaused -> {
-                    Spacer(Modifier.height(12.dp))
                     StatusBox(
-                        label = "Reason For Pause",
-                        value = runState.pauseReason,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    StatusBox(
-                        label = "Layers",
-                        value = runState.pauseLayer.toString(),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                isHoming -> {
-                    Spacer(Modifier.height(16.dp))
-                    LiftAnimation(leftLift = runState.leftLift, rightLift = runState.rightLift)
-                }
-                isError -> {
-                    Spacer(Modifier.height(12.dp))
-                    StatusBox(
-                        label = "Error Information",
-                        value = "${runState.errorInformation} (${runState.errorCode})",
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    StatusBox(
-                        label = "Error Source",
-                        value = runState.errorSource,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    StatusBox(
-                        label = "Layers",
-                        value = runState.errorLayer.toString(),
-                        modifier = Modifier.fillMaxWidth(),
+                        label = "Lift R (mm)",
+                        value = "%.1f".format(runState.rightLift),
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }
-        }
 
-        // ── Bottom: full-width carousel (running only) ────────────────────────
-        if (isRunning) {
-            Box(modifier = Modifier.fillMaxWidth().height(250.dp)) {
-                FlyerCarousel(vm = vm)
+            Spacer(Modifier.height(114.dp))
+            FlyerCarousel(vm = vm)
+            Spacer(Modifier.height(38.dp))
+
+        } else {
+            // ── Non-running: status info fills the page ──────────────────────
+            Column(
+                modifier = Modifier.fillMaxWidth().weight(1f).padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Spacer(Modifier.height(8.dp))
+                StatusBox(
+                    label = "Status",
+                    value = substateLabel(runState.substate).uppercase(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                when {
+                    isPaused -> {
+                        Spacer(Modifier.height(12.dp))
+                        StatusBox(
+                            label = "Reason For Pause",
+                            value = runState.pauseReason,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        StatusBox(
+                            label = "Layers",
+                            value = runState.pauseLayer.toString(),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    isHoming -> {
+                        Spacer(Modifier.height(16.dp))
+                        LiftAnimation(leftLift = runState.leftLift, rightLift = runState.rightLift)
+                    }
+                    isError -> {
+                        Spacer(Modifier.height(12.dp))
+                        StatusBox(
+                            label = "Error Information",
+                            value = "${runState.errorInformation} (${runState.errorCode})",
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        StatusBox(
+                            label = "Error Source",
+                            value = runState.errorSource,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        StatusBox(
+                            label = "Layers",
+                            value = runState.errorLayer.toString(),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
             }
         }
     }

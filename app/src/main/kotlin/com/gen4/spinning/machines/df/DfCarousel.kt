@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -57,11 +58,11 @@ fun DfCarousel(vm: DfViewModel) {
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxWidth().weight(1f),
+            modifier = Modifier.fillMaxWidth().wrapContentHeight(),
         ) { page ->
             val entry = dfPages[page]
             val data = carouselData[entry.motorId] ?: emptyMap()
@@ -99,17 +100,17 @@ private fun DfCarouselCard(
 ) {
     Box(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .padding(horizontal = 8.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(SpinColors.Blue),
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.Top,
         ) {
-            Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+            Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
             Spacer(Modifier.height(12.dp))
             if (isProduction) {
                 DfCarouselRow("Total Length (m)", "%.1f".format(currentLengthM))
@@ -120,7 +121,7 @@ private fun DfCarouselCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Auto Leveller", color = Color.White.copy(alpha = 0.8f), fontSize = 15.sp)
+                    Text("Auto Leveller", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
@@ -131,7 +132,7 @@ private fun DfCarouselCard(
                         Spacer(Modifier.width(6.dp))
                         Text(
                             text = if (alSensorActive) "ON" else "OFF",
-                            color = if (alSensorActive) SpinColors.LightGreen else Color.Red,
+                            color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
                         )
@@ -143,6 +144,7 @@ private fun DfCarouselCard(
                 DfCarouselRow("Motor°C",  data["motorTemp"]  ?: "-")
                 DfCarouselRow("MOSFET°C", data["mosfetTemp"] ?: "-")
             }
+            Spacer(Modifier.height(76.dp))
         }
     }
 }
@@ -153,7 +155,7 @@ private fun DfCarouselRow(label: String, value: String, valueColor: Color = Colo
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(text = label, color = Color.White.copy(alpha = 0.8f), fontSize = 15.sp)
+        Text(text = label, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         Text(text = value, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = valueColor)
     }
 }

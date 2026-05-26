@@ -98,9 +98,12 @@ private fun AppNavHost(app: Gen4SpinningApp) {
     NavHost(navController = navController, startDestination = Screen.SelectMachine.route) {
 
         composable(Screen.SelectMachine.route) {
-            SelectMachineScreen(onMachineSelected = { machine ->
-                navController.navigate(Screen.Bluetooth.go(machine))
-            })
+            SelectMachineScreen(
+                onMachineSelected = { machine ->
+                    navController.navigate(Screen.Bluetooth.go(machine))
+                },
+                onNavigateLogs = { navController.navigate(Screen.Logs.route) },
+            )
         }
 
         composable(Screen.Bluetooth.route, arguments = listOf(machineArg)) { back ->

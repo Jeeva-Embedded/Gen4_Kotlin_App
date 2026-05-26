@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -57,11 +58,11 @@ fun RingCarousel(vm: RingViewModel) {
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxWidth().weight(1f),
+            modifier = Modifier.fillMaxWidth().wrapContentHeight(),
         ) { page ->
             val entry = ringPages[page]
             val data = carouselData[entry.motorId] ?: emptyMap()
@@ -88,14 +89,14 @@ private fun RingCarouselCard(title: String, isProduction: Boolean, data: Map<Str
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = SpinColors.Blue,
-        modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.Top,
         ) {
-            Text(text = title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+            Text(text = title, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.White)
             Spacer(Modifier.height(12.dp))
 
             if (isProduction) {
@@ -112,6 +113,7 @@ private fun RingCarouselCard(title: String, isProduction: Boolean, data: Map<Str
                     StatusBox(label = "MOSFET°C",   value = data["mosfetTemp"] ?: "-", modifier = Modifier.weight(1f))
                 }
             }
+            Spacer(Modifier.height(76.dp))
         }
     }
 }
@@ -122,7 +124,7 @@ private fun CarouselRow(label: String, value: String, unit: String) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(text = label, color = Color.White.copy(alpha = 0.8f), fontSize = 15.sp)
+        Text(text = label, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         Text(text = if (unit.isNotEmpty()) "$value $unit" else value, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = Color.White)
     }
 }

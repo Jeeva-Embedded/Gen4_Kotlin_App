@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -59,11 +60,11 @@ fun FlyerCarousel(vm: FlyerViewModel) {
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxWidth().weight(1f),
+            modifier = Modifier.fillMaxWidth().wrapContentHeight(),
         ) { page ->
             val entry = flyerPages[page]
             val data = carouselData[entry.motorId] ?: emptyMap()
@@ -103,17 +104,17 @@ private fun FlyerCarouselCard(
 ) {
     Box(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .padding(horizontal = 8.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(SpinColors.Blue),
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.Top,
         ) {
-            Text(text = title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+            Text(text = title, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.White)
             Spacer(Modifier.height(12.dp))
 
             if (isProduction) {
@@ -128,6 +129,7 @@ private fun FlyerCarouselCard(
                 FlyerCarouselRow("Motor°C",  data["motorTemp"]  ?: "-")
                 FlyerCarouselRow("MOSFET°C", data["mosfetTemp"] ?: "-")
             }
+            Spacer(Modifier.height(76.dp))
         }
     }
 }
@@ -138,7 +140,7 @@ private fun FlyerCarouselRow(label: String, value: String) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(text = label, color = Color.White.copy(alpha = 0.8f), fontSize = 15.sp)
+        Text(text = label, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         Text(text = value, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = Color.White)
     }
 }

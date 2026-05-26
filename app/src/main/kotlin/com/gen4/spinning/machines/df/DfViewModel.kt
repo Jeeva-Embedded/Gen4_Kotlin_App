@@ -65,6 +65,8 @@ class DfViewModel(app: Application, private val repository: BtSessionRepository)
 
     private var logSession: LogSession? = null
     private var logJob: Job? = null
+    private var logFetchJob: Job? = null
+    private val dfLogMotors = listOf(0x0Au, 0x01u, 0x02u, 0x03u).map { it.toUByte() }
 
     private val _settings = MutableStateFlow(DfSettings())
     val settings: StateFlow<DfSettings> = _settings.asStateFlow()
@@ -360,10 +362,19 @@ class DfViewModel(app: Application, private val repository: BtSessionRepository)
         if (enabled) {
             logSession = createLogSession(getApplication(), "DrawFrame")
             logJob = viewModelScope.launch {
-                while (true) { delay(5_000); writeLogSnapshot() }
+                while (true) { delay(1_000); writeLogSnapshot() }
+            }
+            logFetchJob = viewModelScope.launch {
+                var idx = 0
+                while (true) {
+                    sendCarouselRequest(dfLogMotors[idx])
+                    idx = (idx + 1) % dfLogMotors.size
+                    delay(400)
+                }
             }
         } else {
             logJob?.cancel(); logJob = null
+            logFetchJob?.cancel(); logFetchJob = null
             logSession?.close(); logSession = null
         }
         viewModelScope.launch {
@@ -384,18 +395,14 @@ class DfViewModel(app: Application, private val repository: BtSessionRepository)
         val delivery = if (rs.deliveryMtrsPerMin > 0f) "%.1f".format(rs.deliveryMtrsPerMin) else "-"
         val length = "%.1f".format(rs.currentLength)
         val cd = _carouselData.value
-        if (cd.isEmpty()) {
-            session.writeRow("Draw Frame", state, "-", "-", "-", "-", "-", "-", "-",
+        for (motorId in dfLogMotors) {
+            val name = dfMotorNames[motorId] ?: "Motor ${motorId.toString(16).uppercase()}"
+            val f = cd[motorId] ?: emptyMap()
+            val outMtrs = if (motorId == 0x0Au.toUByte()) length else "-"
+            session.writeRow("Draw Frame", state, name,
+                f["mosfetTemp"] ?: "-", f["motorTemp"] ?: "-", f["rpm"] ?: "-",
+                f["current"] ?: "-", f["totalPower"] ?: "-", outMtrs,
                 delivery, length, alStatus, "-", "-", pauseState, errorInfo, errorSrc)
-        } else {
-            for ((motorId, f) in cd) {
-                val name = dfMotorNames[motorId] ?: "Motor ${motorId.toString(16).uppercase()}"
-                val outMtrs = if (motorId == 0x0Au.toUByte()) length else "-"
-                session.writeRow("Draw Frame", state, name,
-                    f["mosfetTemp"] ?: "-", f["motorTemp"] ?: "-", f["rpm"] ?: "-",
-                    f["current"] ?: "-", f["totalPower"] ?: "-", outMtrs,
-                    delivery, length, alStatus, "-", "-", pauseState, errorInfo, errorSrc)
-            }
         }
     }
 
@@ -408,6 +415,7 @@ class DfViewModel(app: Application, private val repository: BtSessionRepository)
 
     override fun onCleared() {
         logJob?.cancel()
+        logFetchJob?.cancel()
         logSession?.close()
         super.onCleared()
     }

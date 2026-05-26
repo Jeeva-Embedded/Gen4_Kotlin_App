@@ -48,6 +48,8 @@ class RingViewModel(app: Application, private val repository: BtSessionRepositor
 
     private var logSession: LogSession? = null
     private var logJob: Job? = null
+    private var logFetchJob: Job? = null
+    private val ringLogMotors = listOf(0x0Au, 0x01u, 0x08u, 0x09u).map { it.toUByte() }
 
     private val _settings = MutableStateFlow(RingSettings())
     val settings: StateFlow<RingSettings> = _settings.asStateFlow()
@@ -211,10 +213,19 @@ class RingViewModel(app: Application, private val repository: BtSessionRepositor
         if (enabled) {
             logSession = createLogSession(getApplication(), "Ring")
             logJob = viewModelScope.launch {
-                while (true) { delay(5_000); writeLogSnapshot() }
+                while (true) { delay(1_000); writeLogSnapshot() }
+            }
+            logFetchJob = viewModelScope.launch {
+                while (true) {
+                    for (motorId in ringLogMotors) {
+                        sendCarouselRequest(motorId)
+                        delay(400)
+                    }
+                }
             }
         } else {
             logJob?.cancel(); logJob = null
+            logFetchJob?.cancel(); logFetchJob = null
             logSession?.close(); logSession = null
         }
         viewModelScope.launch {
@@ -233,18 +244,14 @@ class RingViewModel(app: Application, private val repository: BtSessionRepositor
         val errorSrc = rs.errorSource.ifEmpty { "-" }
         val weight = "%.2f".format(rs.weight)
         val cd = _carouselData.value
-        if (cd.isEmpty()) {
-            session.writeRow("Ring", state, "-", "-", "-", "-", "-", "-", "-",
+        for (motorId in ringLogMotors) {
+            val name = ringMotorNames[motorId] ?: "Motor ${motorId.toString(16).uppercase()}"
+            val f = cd[motorId] ?: emptyMap()
+            val outMtrs = if (motorId == 0x0Au.toUByte()) f["outputMtrs"] ?: "-" else "-"
+            session.writeRow("Ring", state, name,
+                f["mosfetTemp"] ?: "-", f["motorTemp"] ?: "-", f["rpm"] ?: "-",
+                f["current"] ?: "-", f["totalPower"] ?: "-", outMtrs,
                 "-", weight, "-", "-", "-", pauseState, errorInfo, errorSrc)
-        } else {
-            for ((motorId, f) in cd) {
-                val name = ringMotorNames[motorId] ?: "Motor ${motorId.toString(16).uppercase()}"
-                val outMtrs = if (motorId == 0x0Au.toUByte()) f["outputMtrs"] ?: "-" else "-"
-                session.writeRow("Ring", state, name,
-                    f["mosfetTemp"] ?: "-", f["motorTemp"] ?: "-", f["rpm"] ?: "-",
-                    f["current"] ?: "-", f["totalPower"] ?: "-", outMtrs,
-                    "-", weight, "-", "-", "-", pauseState, errorInfo, errorSrc)
-            }
         }
     }
 
@@ -256,6 +263,7 @@ class RingViewModel(app: Application, private val repository: BtSessionRepositor
 
     override fun onCleared() {
         logJob?.cancel()
+        logFetchJob?.cancel()
         logSession?.close()
         super.onCleared()
     }

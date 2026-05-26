@@ -47,6 +47,7 @@ import com.gen4.spinning.ui.theme.SpinColors
 fun GradientAppBar(
     title: String,
     modifier: Modifier = Modifier,
+    navigationIcon: @Composable (() -> Unit)? = null,
     actions: @Composable () -> Unit = {},
 ) {
     Box(
@@ -61,13 +62,16 @@ fun GradientAppBar(
             .padding(horizontal = 4.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
-        Text(
-            text = title,
-            color = Color.White,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(start = 12.dp),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (navigationIcon != null) navigationIcon()
+            Text(
+                text = title,
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(start = if (navigationIcon != null) 4.dp else 12.dp),
+            )
+        }
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterEnd) {
             Row { actions() }
         }
@@ -110,7 +114,7 @@ fun StatusBox(
         modifier = modifier,
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(text = label, fontSize = 12.sp, color = Color.Gray)
