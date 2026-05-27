@@ -43,6 +43,8 @@ data class FlyerRunState(
     val errorCode: String = "",
     val errorSource: String = "",
     val errorLayer: UShort = 0u,
+    val frontCutCount: Int = 0,
+    val backCutCount: Int = 0,
 )
 
 data class FlyerDiagnosisState(
@@ -118,6 +120,8 @@ class FlyerViewModel(app: Application, private val repository: BtSessionReposito
                         var errorLayer: UShort = 0u
                         var carouselMotorId: UByte = 0x00u
                         val carouselFields = mutableMapOf<String, String>()
+                        var frontCutCount = _runState.value.frontCutCount
+                        var backCutCount = _runState.value.backCutCount
 
                         for (tlv in frame.tlvs) {
                             when (tlv.type) {
@@ -145,6 +149,8 @@ class FlyerViewModel(app: Application, private val repository: BtSessionReposito
                                     0x03u.toUByte() -> errorLayer = tlv.valueAsUInt16()
                                     else -> carouselFields["motorTemp"] = tlv.valueAsUInt16().toString()
                                 }
+                                0x0Fu.toUByte() -> frontCutCount = tlv.valueAsUInt16().toInt()
+                                0x10u.toUByte() -> backCutCount  = tlv.valueAsUInt16().toInt()
                             }
                         }
                         _runState.value = FlyerRunState(
@@ -158,6 +164,8 @@ class FlyerViewModel(app: Application, private val repository: BtSessionReposito
                             errorCode = errorCode,
                             errorSource = errorSource,
                             errorLayer = errorLayer,
+                            frontCutCount = frontCutCount,
+                            backCutCount = backCutCount,
                         )
                         if (carouselMotorId != 0x00u.toUByte()) {
                             _carouselData.value = _carouselData.value + (carouselMotorId to carouselFields)
@@ -313,6 +321,10 @@ class FlyerViewModel(app: Application, private val repository: BtSessionReposito
     fun sendCarouselRequest(motorId: UByte) { repository.sendFrame(FrameCodec.buildCarouselRequest(motorId)) }
     fun sendResetLengthCounter() { repository.sendFrame(FrameCodec.buildResetLengthCounter()) }
     fun sendGearbox(substate: UByte) { repository.sendFrame(FrameCodec.build(0x08u, substate)) }
+    fun sendResetCutCounts() {
+        repository.sendFrame(FrameCodec.build(0x11u, 0x00u))
+        _runState.value = _runState.value.copy(frontCutCount = 0, backCutCount = 0)
+    }
     fun sendRtf(enabled: Boolean) { repository.sendFrame(FrameCodec.build(0x0Bu, if (enabled) 0x01u else 0x00u)) }
 
     fun sendLog(enabled: Boolean) {

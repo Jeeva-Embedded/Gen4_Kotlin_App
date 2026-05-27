@@ -160,11 +160,14 @@ private fun CardingInternalParamsDialog(settings: CardingSettings, onDismiss: ()
     val cardFeedRatio = settings.cardFeedRatio.toDoubleOrNull()
     val cylSpeed = settings.cylSpeed.toDoubleOrNull()
     val btrSpeed = settings.btrSpeed.toDoubleOrNull()
+    val btrFeed = settings.btrFeed.toDoubleOrNull()
 
-    val cylinderMotorRPM = cylSpeed?.let { it / 1.2 }
-    val beaterMotorRPM = btrSpeed?.let { it / 1.2 }
-    val cageMotorRPM = deliverySpeed?.let { (it * 1000.0 / 213.63) * 6.91 }
-    val coilerMotorRPM = if (deliverySpeed != null && cardFeedRatio != null) {
+    val cylinderMotorRPM     = cylSpeed?.let { it * 4.0 }
+    val beaterMotorRPM       = btrSpeed?.let { it * 4.0 }
+    val cylinderFeedMotorRPM = cardFeedRatio?.let { it * 50.0 }
+    val beaterFeedMotorRPM   = btrFeed?.let { it * 120.0 }
+    val cageMotorRPM         = deliverySpeed?.let { (it * 1000.0 / 213.63) * 6.91 }
+    val coilerMotorRPM       = if (deliverySpeed != null && cardFeedRatio != null) {
         ((deliverySpeed * 1000.0 * cardFeedRatio) / 194.779) / 1.656 * 6.91
     } else null
 
@@ -174,10 +177,12 @@ private fun CardingInternalParamsDialog(settings: CardingSettings, onDismiss: ()
         title = { Text("Internal Parameters", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                ParamRow("Cylinder Motor RPM", cylinderMotorRPM, "%.0f")
-                ParamRow("Beater Motor RPM", beaterMotorRPM, "%.0f")
-                ParamRow("Cage Motor RPM", cageMotorRPM, "%.0f")
-                ParamRow("Coiler Motor RPM", coilerMotorRPM, "%.0f")
+                ParamRow("Cylinder Motor RPM",      cylinderMotorRPM,     "%.0f", warnAbove = 3500.0)
+                ParamRow("Beater Motor RPM",        beaterMotorRPM,       "%.0f", warnAbove = 3500.0)
+                ParamRow("Cylinder Feed Motor RPM", cylinderFeedMotorRPM, "%.0f")
+                ParamRow("Beater Feed Motor RPM",   beaterFeedMotorRPM,   "%.0f")
+                ParamRow("Cage Motor RPM",          cageMotorRPM,         "%.0f")
+                ParamRow("Coiler Motor RPM",        coilerMotorRPM,       "%.0f")
             }
         },
     )

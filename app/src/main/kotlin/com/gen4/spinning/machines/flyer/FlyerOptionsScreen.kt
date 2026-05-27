@@ -16,12 +16,14 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -41,12 +43,14 @@ import com.gen4.spinning.ui.theme.SpinColors
 @Composable
 fun FlyerOptionsScreen(vm: FlyerViewModel) {
     val settings by vm.settings.collectAsState()
+    val runState by vm.runState.collectAsState()
     val logEnabled by vm.logEnabled.collectAsState()
     val logMessage by vm.logMessage.collectAsState()
     val gearboxLeft by vm.gearboxLeft.collectAsState()
     val gearboxRight by vm.gearboxRight.collectAsState()
     var rtfDisplay by remember(settings.rtf) { mutableStateOf(settings.rtf) }
     var gearboxRunning by remember { mutableStateOf(false) }
+    var showResetConfirm by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
 
@@ -75,6 +79,20 @@ fun FlyerOptionsScreen(vm: FlyerViewModel) {
                     )
                 }
                 HorizontalDivider()
+            }
+
+            // ── Sensor Cut Counts ───────────────────────────────────────────
+            Column {
+                CutCountRow(label = "Front Sensor Cut Count", count = runState.frontCutCount)
+                Spacer(Modifier.height(8.dp))
+                CutCountRow(label = "Back Sensor Cut Count",  count = runState.backCutCount)
+                Spacer(Modifier.height(12.dp))
+                GradientButton(
+                    text = "Reset Cut Counts",
+                    onClick = { showResetConfirm = true },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                HorizontalDivider(modifier = Modifier.padding(top = 12.dp))
             }
 
             // ── Gear Box Settings ───────────────────────────────────────────
@@ -157,6 +175,34 @@ fun FlyerOptionsScreen(vm: FlyerViewModel) {
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
+    }
+
+    if (showResetConfirm) {
+        AlertDialog(
+            onDismissRequest = { showResetConfirm = false },
+            title = { Text("Reset Cut Counts") },
+            text = { Text("Reset both Front and Back sensor cut counts to 0?") },
+            confirmButton = {
+                TextButton(onClick = { vm.sendResetCutCounts(); showResetConfirm = false }) {
+                    Text("Reset")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetConfirm = false }) { Text("Cancel") }
+            },
+        )
+    }
+}
+
+@Composable
+private fun CutCountRow(label: String, count: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(label, fontSize = 14.sp, color = Color.DarkGray)
+        Text(count.toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold)
     }
 }
 
