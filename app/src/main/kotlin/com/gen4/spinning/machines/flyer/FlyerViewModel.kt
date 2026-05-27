@@ -297,6 +297,7 @@ class FlyerViewModel(app: Application, private val repository: BtSessionReposito
     fun sendSave() { buildFrame()?.let { repository.sendFrame(it) } }
 
     fun sendDiagnostic(motorId: UByte, controlType: UByte, direction: UByte, speedPct: Int, durationSec: Int, bedDistanceMm: Int? = null) {
+        repository.drainTxQueue()
         repository.sendFrame(
             FrameCodec.buildDiagnostic(motorId, controlType, direction, speedPct.toUShort(), durationSec.toUShort(), bedDistanceMm?.toUShort())
         )
@@ -304,7 +305,10 @@ class FlyerViewModel(app: Application, private val repository: BtSessionReposito
 
     fun startDiagnosis(motorLabel: String) { _diagnosisState.value = FlyerDiagnosisState(isDiagnosing = true, motorLabel = motorLabel) }
     fun clearDiagnosis() { _diagnosisState.value = FlyerDiagnosisState() }
-    fun sendStopDiagnosis() { repository.sendFrame(FrameCodec.build(0x04u, 0x06u)) }
+    fun sendStopDiagnosis() {
+        repository.drainTxQueue()
+        repeat(3) { repository.sendFrame(FrameCodec.build(0x04u, 0x06u)) }
+    }
 
     fun sendCarouselRequest(motorId: UByte) { repository.sendFrame(FrameCodec.buildCarouselRequest(motorId)) }
     fun sendResetLengthCounter() { repository.sendFrame(FrameCodec.buildResetLengthCounter()) }
@@ -322,9 +326,11 @@ class FlyerViewModel(app: Application, private val repository: BtSessionReposito
             logFetchJob = viewModelScope.launch {
                 while (true) {
                     for (motorId in flyerLogMotors) {
+                        if (_diagnosisState.value.isDiagnosing) break
                         sendCarouselRequest(motorId)
                         delay(400)
                     }
+                    if (_diagnosisState.value.isDiagnosing) delay(500)
                 }
             }
         } else {

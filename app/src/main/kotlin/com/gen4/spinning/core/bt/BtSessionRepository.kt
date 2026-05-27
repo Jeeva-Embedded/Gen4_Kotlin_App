@@ -103,6 +103,10 @@ class BtSessionRepository(private val bluetoothAdapter: BluetoothAdapter?) {
         return txChannel.trySend(frame).isSuccess
     }
 
+    fun drainTxQueue() {
+        while (txChannel.tryReceive().isSuccess) { /* drop stale queued frames */ }
+    }
+
     private suspend fun connectInternal(device: BluetoothDevice, name: String) {
         if (bluetoothAdapter == null) {
             _connectionState.value = ConnectionState.Disconnected

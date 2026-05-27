@@ -196,9 +196,13 @@ class RingViewModel(app: Application, private val repository: BtSessionRepositor
     fun sendSave() { buildFrame()?.let { repository.sendFrame(it) } }
     fun startDiagnosis(motorLabel: String) { _diagnosisState.value = RingDiagnosisState(isDiagnosing = true, motorLabel = motorLabel) }
     fun clearDiagnosis() { _diagnosisState.value = RingDiagnosisState() }
-    fun sendStopDiagnosis() { repository.sendFrame(FrameCodec.build(0x04u, 0x06u)) }
+    fun sendStopDiagnosis() {
+        repository.drainTxQueue()
+        repeat(3) { repository.sendFrame(FrameCodec.build(0x04u, 0x06u)) }
+    }
 
     fun sendDiagnostic(motorId: UByte, controlType: UByte, direction: UByte, speedPct: Int, durationSec: Int, bedDistanceMm: Int? = null) {
+        repository.drainTxQueue()
         repository.sendFrame(
             FrameCodec.buildDiagnostic(motorId, controlType, direction, speedPct.toUShort(), durationSec.toUShort(), bedDistanceMm?.toUShort())
         )
@@ -218,9 +222,11 @@ class RingViewModel(app: Application, private val repository: BtSessionRepositor
             logFetchJob = viewModelScope.launch {
                 while (true) {
                     for (motorId in ringLogMotors) {
+                        if (_diagnosisState.value.isDiagnosing) break
                         sendCarouselRequest(motorId)
                         delay(400)
                     }
+                    if (_diagnosisState.value.isDiagnosing) delay(500)
                 }
             }
         } else {
