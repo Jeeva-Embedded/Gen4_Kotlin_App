@@ -1,5 +1,5 @@
 # Gen4 Spinning Kotlin — Work Log
-Last updated: 2026-04-27
+Last updated: 2026-05-27
 
 ---
 
@@ -171,18 +171,89 @@ Copy-Item "app\build\outputs\apk\debug\app-debug.apk" "C:\Users\Jeeva\Desktop\Ge
 
 ---
 
+---
+
+## Phase 2 Session Log — 2026-05-22 to 2026-05-27
+
+### Session 2026-05-22 (commits: e0df65c, 5ecaea6)
+- Settings blank on connect: all data classes now use empty string defaults; `resetToDefaults()` restores original values
+- DfStatusScreen: Length + Delivery side-by-side; AL Sensor as StatusBox; pause state shows pauseLength + reason
+- DfCarousel: 2×2 grid per motor card (RPM + Current top, Motor°C + MOSFET°C bottom)
+- All carousels (DF, Carding, Flyer): `fillMaxSize` + `weight(1f)`; blue→green diagonal gradient Box; white text rows
+- StatusBox: optional `valueColor` parameter added
+- AL Sensor indicators: green = ON, red = OFF in running + paused states
+- Carding sensors: "Open/Blocked" StatusBox rows replacing SensorIndicator dots
+- AL Calibration: START/STOP + progress + avg ADC result in DfOptionsScreen
+- SelectMachine: tiles centered vertically; `popUpTo(inclusive=true)` clears back stack on connect
+
+### Session 2026-05-23 (commit: 7e640d4)
+- Settings: editable only when machine is Idle (all 4 machines)
+- DfAlSettings added (kp, sliver4/5/6, target) with GET + SAVE + AL calibration
+- All carousels redesigned: `wrapContentHeight`, `Arrangement.Top`, white + Bold labels, 20sp title
+- CardingCarousel: SensorDot text Bold
+- RingCarousel: Surface → fillMaxWidth; all motor pages use StatusBox pairs (RPM+Current, Motor°C+MOSFET°C)
+- FlyerCarousel: Production page shows layers, Lift L/R values
+- SelectMachineScreen: hamburger icon → ModalNavigationDrawer with "Log Files" NavigationDrawerItem
+- MainActivity: routes `onNavigateLogs` to SelectMachineScreen
+
+### Session 2026-05-26 (commits: 8947a25, 8b32c55, b99f1dc)
+**Logging (8947a25):**
+- Log interval: 5s → 1s for all 4 machines
+- `logFetchJob` added to all 4 ViewModels: background coroutine cycles all motor IDs at 400ms intervals while logging is active
+- `writeLogSnapshot()` refactored to iterate full motor list (not just carousel-visited motors)
+- All motors logged from first second; data = `emptyMap()` until firmware responds
+
+**Running screen layout (8b32c55, b99f1dc):**
+- All 4 status screens: running branch uses compact `Column` (natural height) at top + `Spacer(weight(1f))` then → fixed `Spacer(114.dp)` between status boxes and carousel
+- Carousel pushed to bottom; dots indicator below carousel
+- Non-running branch unchanged (keeps `fillMaxWidth.weight(1f)` style)
+- DfCarousel + all carousels: `HorizontalPager` uses `wrapContentHeight`; `Box` wrapper removed; `Arrangement.Top`
+- StatusBox padding: vertical 6→14dp (slightly taller)
+- Carousel cards: `Spacer(76.dp)` at bottom of each card Column (+2cm height)
+- Bottom spacer: `Spacer(38.dp)` = 1cm gap below carousel
+
+### Session 2026-05-27 (commit: 7e387a7)
+**Diagnosis fix — all 4 machines:**
+- Root cause: `logFetchJob` flooded BT tx queue with carousel requests (0x07) during diagnosis, delaying/interfering with diagnosis start (0x04,0x01) and stop (0x04,0x06) commands
+- `BtSessionRepository.drainTxQueue()` added: flushes `txChannel` before critical commands
+- `sendDiagnostic()`: calls `drainTxQueue()` before sending start frame
+- `sendStopDiagnosis()`: calls `drainTxQueue()` then sends stop frame 3× for reliability
+- `logFetchJob` (all 4 ViewModels): checks `_diagnosisState.value.isDiagnosing` each cycle; skips carousel sends while diagnosis is active
+
+---
+
+## APK Version History
+| Version | Date | Key changes |
+|---------|------|-------------|
+| v1–v9 | 2026-04-27 | Phase 1: initial port, crash fixes, BT, all 4 machines |
+| v10–v13 | 2026-05-22–23 | Phase 2: AL settings, sensors, carousel redesign, drawer |
+| v14 | 2026-05-23 | logFetchJob + 1s interval + carousel bottom layout |
+| v15 | 2026-05-26 | Carousel position + all motors logged from start |
+| v16 | 2026-05-26 | Layout: Spacer(weight(1f)) → carousel at bottom all 4 machines |
+| v17 | 2026-05-26 | Spacing: 3cm gap + 2cm taller carousel cards + 1cm bottom gap |
+| v18 | 2026-05-27 | Diagnosis fix: drainTxQueue + logFetchJob pause + stop 3× |
+
+---
+
 ## Phase 2 Corrections Still Needed
 See `PHASE2_CORRECTIONS.md` for full details. Key items:
 
-1. Substate enum values wrong (Pause=0x02, Error=0x03, Homing=0x04 — currently reversed)
-2. Missing Error/Pause/Homing sub-UI in all Status screens
-3. **Missing DrawFrame carousel** (`DfStatusScreen.kt`) — 4 pages: PRODUCTION(0x0A), FrontRoller(0x01), BackRoller(0x02), Creel(0x03)
-4. Ring "Doff Percent" label (currently shows "Weight")
-5. Missing Ring "Reset Grams Per Spindle" button (opcode 0x0A)
-6. Missing Carding Internal Parameters popup (derived RPM calculations)
-7. Missing Ring lift animation (tilting bar visual)
-8. Sensor labels should show "Open/Blocked" text
-9. Missing Drawer menu ("Change Device Name" + "Exit App") in all dashboards
+**Fixed in Phase 2 (all done):**
+1. ✅ Substate enum corrected (Pause=0x02, Error=0x03, Homing=0x04)
+2. ✅ Error/Pause/Homing sub-UI added to all 4 status screens
+3. ✅ DrawFrame carousel (`DfCarousel.kt`) — 4 pages
+4. ✅ Ring "Doff Percent" label
+5. ✅ Sensor "Open/Blocked" text with color
+6. ✅ Drawer menu: "Log Files" + "Exit App" in all dashboards + SelectMachineScreen
+7. ✅ AL Settings + Calibration (Draw Frame)
+8. ✅ CSV logging: 1s interval, all motors, logFetchJob
+9. ✅ Running layout: status top + 3cm gap + carousel
+10. ✅ Diagnosis start/stop reliability (drainTxQueue)
+
+**Still pending:**
+- Ring: Reset Grams Per Spindle button (opcode 0x0A)
+- Carding: Internal Parameters popup (derived RPM calculations)
+- Ring: Tilt bar lift animation in status screen (FlyerStatusScreen has it; Ring still pending)
 
 ---
 

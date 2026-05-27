@@ -78,7 +78,37 @@
 
 ---
 
-## REMAINING (one item)
+## PHASE 2 ADDITIONS (2026-05-22 to 2026-05-27)
+
+### Fixed Phase 2 Corrections
+- Substate labels corrected across all 4 machines ✅
+- Error / Pause / Homing sub-UI added to all 4 status screens ✅
+- `DfCarousel.kt` created (4 pages: Production, Front Roller, Back Roller, Creel) ✅
+- Ring "Doff Percent" label ✅
+- Carding sensor "Open/Blocked" StatusBox rows ✅
+- ModalNavigationDrawer in all dashboards + SelectMachineScreen (Log Files + Exit) ✅
+
+### New Features
+- **AL Settings (Draw Frame):** GET (0x13) / SAVE (0x11) / response (0x12) full BT round-trip ✅
+- **AL Calibration (Draw Frame):** open-loop motor run → ADC avg result → shows in DfOptionsScreen ✅
+- **CSV Logging — all 4 machines:** 1s interval; logFetchJob cycles all motor IDs (400ms); all motors in log from first second ✅
+- **Running screen layout:** compact status at top → fixed 3cm Spacer → carousel card (2cm taller) → 1cm bottom gap ✅
+- **Diagnosis reliability:** `drainTxQueue()` before start/stop; stop sent 3×; logFetchJob pauses during diagnosis ✅
+
+### New Files
+| File | Description |
+|---|---|
+| `machines/df/DfCarousel.kt` | 4-page carousel for Draw Frame |
+| `machines/df/DfAlSettingsScreen.kt` | AL settings GET/SAVE UI |
+
+### Still Pending
+- Ring: Reset Grams Per Spindle button (opcode 0x0A)
+- Carding: Internal Parameters popup (derived RPM calculations from settings)
+- Ring: Tilt bar lift animation in status screen (homing state)
+
+---
+
+## REMAINING (one item — from Phase 1)
 
 - Add `app/src/main/res/drawable/logo.png` (or `logo.xml`) — SplashScreen references `R.drawable.logo`. Without this the project won't compile. Add any placeholder PNG/vector as `logo`.
 
