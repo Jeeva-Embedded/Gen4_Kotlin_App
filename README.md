@@ -237,4 +237,4 @@ On first launch Android will prompt:
 
 ## Protocol Reference Document
 
-`Gen4_HMI_BT_Protocol.xlsx` — multi-sheet Excel workbook covering every opcode, TLV type, wire encoding, machine-specific settings, carousel, diagnostics, and AL protocol in full detail.
+`Gen4_Spinning_HMI_v8.xlsx` — multi-sheet Excel workbook covering every opcode, TLV type, wire encoding, machine-specific settings, carousel, diagnostics, and AL protocol in full detail.
