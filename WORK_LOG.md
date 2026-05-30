@@ -1,5 +1,5 @@
 # Gen4 Spinning Kotlin — Work Log
-Last updated: 2026-05-27
+Last updated: 2026-05-30
 
 ---
 
@@ -219,6 +219,11 @@ Copy-Item "app\build\outputs\apk\debug\app-debug.apk" "C:\Users\Jeeva\Desktop\Ge
 - `sendDiagnostic()`: calls `drainTxQueue()` before sending start frame
 - `sendStopDiagnosis()`: calls `drainTxQueue()` then sends stop frame 3× for reliability
 - `logFetchJob` (all 4 ViewModels): checks `_diagnosisState.value.isDiagnosing` each cycle; skips carousel sends while diagnosis is active
+
+### Session 2026-05-30
+**Repo cleanup:**
+- Removed `gen_hmi.py` from the repository — it is a standalone Python script for generating the HMI BT Protocol Excel workbook and is not part of the Android app build. The generated Excel file (`Gen4_HMI_BT_Protocol.xlsx`) already exists in the repo; the script is no longer needed here.
+- Updated `README.md` with a full, accurate project description covering architecture, project structure, BT protocol, all machines, build instructions, and feature summary.
 
 ---
 
