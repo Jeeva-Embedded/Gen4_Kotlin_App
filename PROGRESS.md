@@ -91,9 +91,12 @@
 ### New Features
 - **AL Settings (Draw Frame):** GET (0x13) / SAVE (0x11) / response (0x12) full BT round-trip ✅
 - **AL Calibration (Draw Frame):** open-loop motor run → ADC avg result → shows in DfOptionsScreen ✅
-- **CSV Logging — all 4 machines:** 1s interval; logFetchJob cycles all motor IDs (400ms); all motors in log from first second ✅
+- **CSV Logging — all 4 machines:** 1s interval; logFetchJob cycles all motor IDs (200ms); all motors in log from first second ✅
 - **Running screen layout:** compact status at top → fixed 3cm Spacer → carousel card (2cm taller) → 1cm bottom gap ✅
-- **Diagnosis reliability:** `drainTxQueue()` before start/stop; stop sent 3×; logFetchJob pauses during diagnosis ✅
+- **Diagnosis reliability:** `drainTxQueue()` before stop; stop sent 3×; logFetchJob pauses during diagnosis ✅
+- **Diagnosis stop race fix (2026-06-03):** `stopAndClearDiagnosis()` — drain + 3×stop + 600ms delay; removed drain from `sendDiagnostic()` ✅
+- **Carousel refresh rate (2026-06-03):** logFetchJob delay 400ms → 200ms across all 4 machines ✅
+- **LogsScreen UX (2026-06-03):** tap row = open in Excel (ACTION_VIEW); green Download button = save to Downloads (MediaStore); Share button retained ✅
 
 ### New Files
 | File | Description |
@@ -102,9 +105,9 @@
 | `machines/df/DfAlSettingsScreen.kt` | AL settings GET/SAVE UI |
 
 ### Still Pending
-- Ring: Reset Grams Per Spindle button (opcode 0x0A)
+- Ring: Reset Grams Per Spindle button (opcode 0x0A, `vm.sendResetGrams()`)
 - Carding: Internal Parameters popup (derived RPM calculations from settings)
-- Ring: Tilt bar lift animation in status screen (homing state)
+- Ring: Tilt bar lift animation in RingStatusScreen homing state (FlyerStatusScreen already has LiftAnimation)
 
 ---
 

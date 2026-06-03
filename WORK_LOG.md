@@ -1,5 +1,5 @@
 # Gen4 Spinning Kotlin — Work Log
-Last updated: 2026-05-30
+Last updated: 2026-06-03
 
 ---
 
@@ -199,7 +199,7 @@ Copy-Item "app\build\outputs\apk\debug\app-debug.apk" "C:\Users\Jeeva\Desktop\Ge
 ### Session 2026-05-26 (commits: 8947a25, 8b32c55, b99f1dc)
 **Logging (8947a25):**
 - Log interval: 5s → 1s for all 4 machines
-- `logFetchJob` added to all 4 ViewModels: background coroutine cycles all motor IDs at 400ms intervals while logging is active
+- `logFetchJob` added to all 4 ViewModels: background coroutine cycles all motor IDs at 400ms intervals while logging is active (later reduced to 200ms — see 2026-06-03)
 - `writeLogSnapshot()` refactored to iterate full motor list (not just carousel-visited motors)
 - All motors logged from first second; data = `emptyMap()` until firmware responds
 
@@ -216,7 +216,7 @@ Copy-Item "app\build\outputs\apk\debug\app-debug.apk" "C:\Users\Jeeva\Desktop\Ge
 **Diagnosis fix — all 4 machines:**
 - Root cause: `logFetchJob` flooded BT tx queue with carousel requests (0x07) during diagnosis, delaying/interfering with diagnosis start (0x04,0x01) and stop (0x04,0x06) commands
 - `BtSessionRepository.drainTxQueue()` added: flushes `txChannel` before critical commands
-- `sendDiagnostic()`: calls `drainTxQueue()` before sending start frame
+- `sendDiagnostic()`: calls `drainTxQueue()` before sending start frame (**later removed — see 2026-06-03**)
 - `sendStopDiagnosis()`: calls `drainTxQueue()` then sends stop frame 3× for reliability
 - `logFetchJob` (all 4 ViewModels): checks `_diagnosisState.value.isDiagnosing` each cycle; skips carousel sends while diagnosis is active
 
@@ -224,6 +224,23 @@ Copy-Item "app\build\outputs\apk\debug\app-debug.apk" "C:\Users\Jeeva\Desktop\Ge
 **Repo cleanup:**
 - Removed `gen_hmi.py` from the repository — it is a standalone Python script for generating the HMI BT Protocol Excel workbook and is not part of the Android app build. The generated Excel file (`Gen4_HMI_BT_Protocol.xlsx`) already exists in the repo; the script is no longer needed here.
 - Updated `README.md` with a full, accurate project description covering architecture, project structure, BT protocol, all machines, build instructions, and feature summary.
+
+### Session 2026-06-03 (commit: 1a42682)
+**Diagnosis stop/start race condition fix — all 4 machines:**
+- Root cause found: `drainTxQueue()` inside `sendDiagnostic()` was draining the 3 stop frames that had just been queued by `sendStopDiagnosis()` when the user pressed Stop → Run rapidly. Firmware never received stop; motor kept running from previous diagnosis.
+- **Removed `drainTxQueue()` from `sendDiagnostic()`** in all 4 ViewModels (DF, Carding, Flyer, Ring).
+- **Added `stopAndClearDiagnosis()`** to all 4 ViewModels: drains queue → sends 3× stop frame → `delay(600ms)` → clears `_diagnosisState`. The 600ms delay holds the result screen visible while stop frames are transmitted, preventing any re-start race.
+- All 4 test screens (`DfTestsScreen`, `CardingTestsScreen`, `FlyerTestsScreen`, `RingTestsScreen`): Stop button now calls `vm.stopAndClearDiagnosis()` instead of `vm.sendStopDiagnosis(); vm.clearDiagnosis()`.
+
+**Carousel refresh speed:**
+- `logFetchJob` inter-motor delay reduced from **400ms → 200ms** in all 4 ViewModels.
+- Refresh cycle times: DF/Ring 1.6s→0.8s, Flyer 2.8s→1.4s, Carding 3.6s→1.8s.
+
+**Log file UX — LogsScreen.kt:**
+- **Open in Excel:** tap any file row → `Intent.ACTION_VIEW` with `text/csv` MIME type; fallback to `application/vnd.ms-excel` if no CSV handler; toast if no app found.
+- **Save to Downloads:** new green Download icon → copies file to device Downloads folder using `MediaStore.Downloads` (Android 10+) with direct `Environment.DIRECTORY_DOWNLOADS` copy fallback for Android 8–9. Toast on success/failure.
+- **Share button** retained (blue icon, `ACTION_SEND` share sheet).
+- **Delete button** retained (red icon, confirmation dialog).
 
 ---
 
@@ -237,6 +254,7 @@ Copy-Item "app\build\outputs\apk\debug\app-debug.apk" "C:\Users\Jeeva\Desktop\Ge
 | v16 | 2026-05-26 | Layout: Spacer(weight(1f)) → carousel at bottom all 4 machines |
 | v17 | 2026-05-26 | Spacing: 3cm gap + 2cm taller carousel cards + 1cm bottom gap |
 | v18 | 2026-05-27 | Diagnosis fix: drainTxQueue + logFetchJob pause + stop 3× |
+| v19 | 2026-06-03 | Diagnosis stop race fix; carousel 200ms; LogsScreen open/download/share |
 
 ---
 
@@ -254,6 +272,11 @@ See `PHASE2_CORRECTIONS.md` for full details. Key items:
 8. ✅ CSV logging: 1s interval, all motors, logFetchJob
 9. ✅ Running layout: status top + 3cm gap + carousel
 10. ✅ Diagnosis start/stop reliability (drainTxQueue)
+
+**Fixed in session 2026-06-03:**
+11. ✅ Diagnosis stop/start race condition (stopAndClearDiagnosis + 600ms delay)
+12. ✅ Carousel refresh rate (logFetchJob 400ms → 200ms per motor)
+13. ✅ LogsScreen: tap-to-open in Excel, Download to device, Share
 
 **Still pending:**
 - Ring: Reset Grams Per Spindle button (opcode 0x0A)
