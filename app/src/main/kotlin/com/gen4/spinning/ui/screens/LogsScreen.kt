@@ -8,6 +8,8 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -53,6 +56,37 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+private val MACHINE_ORDER = listOf("DrawFrame", "BlowCard", "Flyer", "Ring")
+private val MACHINE_DISPLAY = mapOf(
+    "DrawFrame" to "Draw Frame",
+    "BlowCard" to "Blow Card",
+    "Flyer" to "Flyer Frame",
+    "Ring" to "Ring Doubler",
+)
+
+private fun machineKey(file: File): String =
+    file.nameWithoutExtension.substringBefore("_").ifEmpty { "Other" }
+
+private fun groupByMachine(files: List<File>): List<Pair<String, List<File>>> {
+    val grouped = files.groupBy { machineKey(it) }
+        .mapValues { (_, v) -> v.sortedByDescending { it.lastModified() } }
+    val result = mutableListOf<Pair<String, List<File>>>()
+    for (key in MACHINE_ORDER) grouped[key]?.let { result.add(key to it) }
+    for ((key, value) in grouped) if (key !in MACHINE_ORDER) result.add(key to value)
+    return result
+}
+
+private fun fileDateDisplay(file: File): String = try {
+    val parts = file.nameWithoutExtension.split("_")
+    // filename format: Machine_yyyyMMdd_HHmmss
+    val parsed = SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault())
+        .parse("${parts[1]}${parts[2]}")
+    SimpleDateFormat("dd MMM yyyy  •  HH:mm:ss", Locale.getDefault()).format(parsed!!)
+} catch (_: Exception) {
+    SimpleDateFormat("dd MMM yyyy  •  HH:mm:ss", Locale.getDefault()).format(Date(file.lastModified()))
+}
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun LogsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
@@ -88,9 +122,9 @@ fun LogsScreen(onBack: () -> Unit) {
         },
         containerColor = Color.White,
     ) { padding ->
-        val saveDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOCUMENTS)?.absolutePath
-            ?: context.filesDir.absolutePath
         if (files.isEmpty()) {
+            val saveDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOCUMENTS)
+                ?.absolutePath ?: context.filesDir.absolutePath
             Box(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center,
@@ -112,32 +146,76 @@ fun LogsScreen(onBack: () -> Unit) {
                 }
             }
         } else {
+            val sections = remember(files) { groupByMachine(files) }
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 16.dp),
+                    .padding(padding),
             ) {
                 item {
                     Text(
-                        text = "Tap file to open in Excel  •  ↓ = Save to Downloads",
+                        text = "Tap file to open  •  ↓ Save to Downloads",
                         fontSize = 11.sp,
                         color = Color.Gray,
-                        modifier = Modifier.padding(vertical = 8.dp),
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .padding(vertical = 8.dp),
                     )
-                    HorizontalDivider()
                 }
-                items(files) { file ->
-                    LogFileRow(
-                        file = file,
-                        onOpen = { openFile(context, file) },
-                        onShare = { shareFile(context, file) },
-                        onDownload = { saveToDownloads(context, file) },
-                        onDelete = { deleteTarget = file },
-                    )
-                    HorizontalDivider()
+                sections.forEach { (key, machineFiles) ->
+                    val displayName = MACHINE_DISPLAY[key] ?: key
+                    val count = machineFiles.size
+                    stickyHeader(key = key) {
+                        MachineSectionHeader(
+                            name = displayName,
+                            count = count,
+                        )
+                    }
+                    items(machineFiles, key = { it.absolutePath }) { file ->
+                        LogFileRow(
+                            file = file,
+                            onOpen = { openFile(context, file) },
+                            onShare = { shareFile(context, file) },
+                            onDownload = { saveToDownloads(context, file) },
+                            onDelete = { deleteTarget = file },
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    }
+                    item(key = "${key}_spacer") { Spacer(Modifier.height(8.dp)) }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun MachineSectionHeader(name: String, count: Int) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.horizontalGradient(
+                    listOf(SpinColors.Blue, SpinColors.LightGreen)
+                )
+            )
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = name.uppercase(),
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = if (count == 1) "1 file" else "$count files",
+                color = Color.White.copy(alpha = 0.85f),
+                fontSize = 12.sp,
+            )
         }
     }
 }
@@ -150,19 +228,23 @@ private fun LogFileRow(
     onDownload: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    val sdf = remember { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()) }
     val sizeKb = (file.length() / 1024).coerceAtLeast(1)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onOpen)
-            .padding(vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(file.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = SpinColors.Blue)
             Text(
-                text = "${sdf.format(Date(file.lastModified()))}  •  $sizeKb KB",
+                text = fileDateDisplay(file),
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                color = Color(0xFF1A1A1A),
+            )
+            Text(
+                text = "$sizeKb KB",
                 fontSize = 12.sp,
                 color = Color.Gray,
             )
