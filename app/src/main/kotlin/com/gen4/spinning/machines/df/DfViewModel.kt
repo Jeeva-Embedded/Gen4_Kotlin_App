@@ -348,7 +348,6 @@ class DfViewModel(app: Application, private val repository: BtSessionRepository)
     fun sendResetLengthCounter() { repository.sendFrame(FrameCodec.buildResetLengthCounter()) }
 
     fun sendDiagnostic(motorId: UByte, controlType: UByte, direction: UByte, speedPct: Int, durationSec: Int) {
-        repository.drainTxQueue()
         repository.sendFrame(
             FrameCodec.buildDiagnostic(motorId, controlType, direction, speedPct.toUShort(), durationSec.toUShort())
         )
@@ -357,6 +356,12 @@ class DfViewModel(app: Application, private val repository: BtSessionRepository)
     fun sendStopDiagnosis() {
         repository.drainTxQueue()
         repeat(3) { repository.sendFrame(FrameCodec.build(0x04u, 0x06u)) }
+    }
+
+    fun stopAndClearDiagnosis() {
+        repository.drainTxQueue()
+        repeat(3) { repository.sendFrame(FrameCodec.build(0x04u, 0x06u)) }
+        viewModelScope.launch { delay(600); _diagnosisState.value = DfDiagnosisState() }
     }
     fun sendGearbox(substate: UByte) { repository.sendFrame(FrameCodec.build(0x08u, substate)) }
     fun sendRtf(enabled: Boolean) { repository.sendFrame(FrameCodec.build(0x0Bu, if (enabled) 0x01u else 0x00u)) }
@@ -375,7 +380,7 @@ class DfViewModel(app: Application, private val repository: BtSessionRepository)
                         sendCarouselRequest(dfLogMotors[idx])
                         idx = (idx + 1) % dfLogMotors.size
                     }
-                    delay(400)
+                    delay(200)
                 }
             }
         } else {

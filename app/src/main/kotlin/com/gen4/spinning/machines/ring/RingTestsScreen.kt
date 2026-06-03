@@ -53,7 +53,7 @@ fun RingTestsScreen(vm: RingViewModel) {
     val diagnosisState by vm.diagnosisState.collectAsState()
 
     if (diagnosisState.isDiagnosing) {
-        RingDiagnosisResultScreen(state = diagnosisState, onBack = { vm.sendStopDiagnosis(); vm.clearDiagnosis() })
+        RingDiagnosisResultScreen(state = diagnosisState, onBack = { vm.stopAndClearDiagnosis() })
         return
     }
 

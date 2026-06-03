@@ -60,7 +60,7 @@ fun DfTestsScreen(vm: DfViewModel) {
     var directionExpanded by remember { mutableStateOf(false) }
 
     if (diagnosisState.isDiagnosing) {
-        DfDiagnosisResultScreen(state = diagnosisState, onBack = { vm.sendStopDiagnosis(); vm.clearDiagnosis() })
+        DfDiagnosisResultScreen(state = diagnosisState, onBack = { vm.stopAndClearDiagnosis() })
         return
     }
 

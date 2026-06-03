@@ -64,7 +64,7 @@ fun CardingTestsScreen(vm: CardingViewModel) {
     var directionExpanded by remember { mutableStateOf(false) }
 
     if (diagnosisState.isDiagnosing) {
-        CardingDiagnosisResultScreen(state = diagnosisState, onBack = { vm.sendStopDiagnosis(); vm.clearDiagnosis() })
+        CardingDiagnosisResultScreen(state = diagnosisState, onBack = { vm.stopAndClearDiagnosis() })
         return
     }
 

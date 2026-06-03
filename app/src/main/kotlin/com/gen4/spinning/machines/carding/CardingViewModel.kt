@@ -276,7 +276,6 @@ class CardingViewModel(app: Application, private val repository: BtSessionReposi
     fun sendResetLengthCounter() { repository.sendFrame(FrameCodec.buildResetLengthCounter()) }
 
     fun sendDiagnostic(motorId: UByte, controlType: UByte, direction: UByte, speedPct: Int, durationSec: Int) {
-        repository.drainTxQueue()
         repository.sendFrame(
             FrameCodec.buildDiagnostic(motorId, controlType, direction, speedPct.toUShort(), durationSec.toUShort())
         )
@@ -287,6 +286,12 @@ class CardingViewModel(app: Application, private val repository: BtSessionReposi
     fun sendStopDiagnosis() {
         repository.drainTxQueue()
         repeat(3) { repository.sendFrame(FrameCodec.build(0x04u, 0x06u)) }
+    }
+
+    fun stopAndClearDiagnosis() {
+        repository.drainTxQueue()
+        repeat(3) { repository.sendFrame(FrameCodec.build(0x04u, 0x06u)) }
+        viewModelScope.launch { delay(600); _diagnosisState.value = CardingDiagnosisState() }
     }
 
     fun sendGearbox(substate: UByte) { repository.sendFrame(FrameCodec.build(0x08u, substate)) }
@@ -305,7 +310,7 @@ class CardingViewModel(app: Application, private val repository: BtSessionReposi
                     for (motorId in cardingLogMotors) {
                         if (_diagnosisState.value.isDiagnosing) break
                         sendCarouselRequest(motorId)
-                        delay(400)
+                        delay(200)
                     }
                     if (_diagnosisState.value.isDiagnosing) delay(500)
                 }

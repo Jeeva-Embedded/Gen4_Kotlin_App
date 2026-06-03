@@ -73,7 +73,7 @@ fun FlyerTestsScreen(vm: FlyerViewModel) {
     val isLift by remember { derivedStateOf { flyerMotors[motorIndex].isLift } }
 
     if (diagnosisState.isDiagnosing) {
-        FlyerDiagnosisResultScreen(state = diagnosisState, onBack = { vm.sendStopDiagnosis(); vm.clearDiagnosis() })
+        FlyerDiagnosisResultScreen(state = diagnosisState, onBack = { vm.stopAndClearDiagnosis() })
         return
     }
 
