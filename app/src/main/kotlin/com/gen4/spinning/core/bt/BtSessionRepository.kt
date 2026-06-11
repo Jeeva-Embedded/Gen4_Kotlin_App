@@ -200,12 +200,17 @@ class BtSessionRepository(private val bluetoothAdapter: BluetoothAdapter?) {
             is FrameCodec.ParseResult.Ok -> {
                 val frame = result.frame
                 Log.d(TAG, "RX OK: info=0x${frame.info.toString(16).uppercase()} sub=0x${frame.subState.toString(16).uppercase()} tlvs=${frame.tlvs.size}")
-                if (frame.info == 0x06u.toUByte()) {
-                    lastMcStateMs = System.currentTimeMillis()
-                    val state = _connectionState.value
-                    if (state is ConnectionState.Reconnecting) {
-                        _connectionState.value = ConnectionState.Connected(state.deviceName, state.deviceAddress)
-                    }
+                // Any valid frame from the machine proves the link is alive — update liveness
+                // for ALL frames, not just the 0x06 heartbeat. While a diagnosis is running the
+                // machine pauses the 0x06 heartbeat and streams 0x05 diagnosis-response frames
+                // instead; if only 0x06 reset the watchdog, a diagnosis longer than the timeouts
+                // would flip to Reconnecting (3s) and then tear down the socket (15s). That left
+                // the stop-diagnosis frame undeliverable, so the motor kept spinning and only a
+                // reconnect/power-cycle recovered it.
+                lastMcStateMs = System.currentTimeMillis()
+                val state = _connectionState.value
+                if (state is ConnectionState.Reconnecting) {
+                    _connectionState.value = ConnectionState.Connected(state.deviceName, state.deviceAddress)
                 }
                 _inboundFrames.tryEmit(frame)
             }
