@@ -242,6 +242,17 @@ Copy-Item "app\build\outputs\apk\debug\app-debug.apk" "C:\Users\Jeeva\Desktop\Ge
 - **Share button** retained (blue icon, `ACTION_SEND` share sheet).
 - **Delete button** retained (red icon, confirmation dialog).
 
+### Session 2026-06-11 (commit: 8cba228)
+**Diagnosis stuck / motor keeps spinning after Stop — all 4 machines:**
+- Symptom: pressing Stop Diagnosis sometimes left the motor rotating; machine went to "Unknown" state and would not run the main machine until a power-cycle or BT reconnect. Only happened on longer diagnoses.
+- Root cause found in `BtSessionRepository`: the connection watchdog only refreshed `lastMcStateMs` when a `0x06` run-state heartbeat arrived. But while a diagnosis runs the machine **pauses the 0x06 heartbeat and streams `0x05` diagnosis-response frames instead**. So the watchdog saw "silence": at `RECONNECT_WARN_TIMEOUT_MS` (3s) it flipped to Reconnecting, and at `RECONNECT_LOST_TIMEOUT_MS` (15s) it tore down the socket → state Lost. Once Lost, `sendFrame()` returns false, so the 3× stop frames were never transmitted; firmware stayed in diagnosis with the motor spinning.
+- **Fix:** in `processRawReceive()`, move the `lastMcStateMs = now` update (and Reconnecting→Connected recovery) out of the `info == 0x06` block so **any valid inbound frame refreshes liveness** — including `0x05`. Single change in the shared repository fixes all 4 machines.
+
+**Signed release builds — `app/build.gradle`:**
+- `assembleRelease` previously emitted `app-release-unsigned.apk`, which Android rejects ("package appears to be invalid").
+- Added `signingConfigs.release` (keystore `gen4-release.jks`, alias `gen4`) and applied it to the release build type → output is now signed `app-release.apk`.
+- Keystore is gitignored (`*.jks`) and kept local only; must be backed up and reused for all future updates (same-key requirement). Switching from the old debug key requires uninstalling the previously-installed debug build first (signature-conflict).
+
 ---
 
 ## APK Version History
@@ -255,6 +266,7 @@ Copy-Item "app\build\outputs\apk\debug\app-debug.apk" "C:\Users\Jeeva\Desktop\Ge
 | v17 | 2026-05-26 | Spacing: 3cm gap + 2cm taller carousel cards + 1cm bottom gap |
 | v18 | 2026-05-27 | Diagnosis fix: drainTxQueue + logFetchJob pause + stop 3× |
 | v19 | 2026-06-03 | Diagnosis stop race fix; carousel 200ms; LogsScreen open/download/share |
+| v20 | 2026-06-11 | BT watchdog: any frame (incl. 0x05) keeps link alive during diagnosis; signed release APK |
 
 ---
 
@@ -277,6 +289,10 @@ See `PHASE2_CORRECTIONS.md` for full details. Key items:
 11. ✅ Diagnosis stop/start race condition (stopAndClearDiagnosis + 600ms delay)
 12. ✅ Carousel refresh rate (logFetchJob 400ms → 200ms per motor)
 13. ✅ LogsScreen: tap-to-open in Excel, Download to device, Share
+
+**Fixed in session 2026-06-11:**
+14. ✅ Diagnosis stuck / motor keeps spinning after Stop — watchdog now treats any inbound frame (incl. 0x05 diagnosis frames) as keeping the BT link alive, so the socket is no longer torn down mid-diagnosis
+15. ✅ Release builds signed (`signingConfigs.release`) → installable `app-release.apk`
 
 **Still pending:**
 - Ring: Reset Grams Per Spindle button (opcode 0x0A)
