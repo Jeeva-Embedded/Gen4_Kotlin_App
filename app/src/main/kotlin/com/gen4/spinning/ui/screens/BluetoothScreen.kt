@@ -146,14 +146,6 @@ fun BluetoothScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            Spacer(Modifier.height(12.dp))
-
-            GradientButton(
-                text = "Demo Mode (No Bluetooth)",
-                onClick = { repository.enterDemoMode() },
-                modifier = Modifier.fillMaxWidth(),
-            )
-
             Spacer(Modifier.height(24.dp))
 
             Text(

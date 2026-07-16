@@ -59,13 +59,6 @@ class BtSessionRepository(private val bluetoothAdapter: BluetoothAdapter?) {
     private var watchdogJob: Job? = null
     @Volatile private var lastMcStateMs: Long = 0L
 
-    fun enterDemoMode() {
-        _connectionState.value = ConnectionState.Connected(
-            deviceName = "Demo Device",
-            deviceAddress = "00:00:00:00:00:00",
-        )
-    }
-
     fun connect(device: BluetoothDevice) {
         val current = _connectionState.value
         if (current is ConnectionState.Connecting || current is ConnectionState.Connected) return
