@@ -402,8 +402,8 @@ class FlyerViewModel(app: Application, private val repository: BtSessionReposito
     private fun flyerPauseReason(code: Int): String = when (code) {
         1 -> "User Paused"
         2 -> "Front Sliver Cut"
-        3 -> "Back Sliver Cut"
         4 -> "Lapping"
+        5 -> "Back Sliver Cut"
         else -> "Unknown"
     }
 

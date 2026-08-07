@@ -48,7 +48,6 @@ private val flyerPages = listOf(
 @Composable
 fun FlyerCarousel(vm: FlyerViewModel) {
     val carouselData by vm.carouselData.collectAsState()
-    val runState by vm.runState.collectAsState()
     val pagerState = rememberPagerState(pageCount = { flyerPages.size })
 
     LaunchedEffect(pagerState.currentPage) {
@@ -72,9 +71,6 @@ fun FlyerCarousel(vm: FlyerViewModel) {
                 title = entry.label,
                 isProduction = entry.motorId == 0x0Au.toUByte(),
                 data = data,
-                layers = runState.layers.toInt(),
-                leftLift = runState.leftLift,
-                rightLift = runState.rightLift,
             )
         }
 
@@ -98,9 +94,6 @@ private fun FlyerCarouselCard(
     title: String,
     isProduction: Boolean,
     data: Map<String, String>,
-    layers: Int = 0,
-    leftLift: Float = 0f,
-    rightLift: Float = 0f,
 ) {
     Box(
         modifier = Modifier
@@ -120,9 +113,6 @@ private fun FlyerCarouselCard(
             if (isProduction) {
                 FlyerCarouselRow("Output/Spindle (m)", data["outputMtrs"] ?: "-")
                 FlyerCarouselRow("Total Power (W)",    data["totalPower"] ?: "-")
-                FlyerCarouselRow("Layers",             layers.toString())
-                FlyerCarouselRow("Lift L (mm)",        "%.1f".format(leftLift))
-                FlyerCarouselRow("Lift R (mm)",        "%.1f".format(rightLift))
             } else {
                 FlyerCarouselRow("RPM",      data["rpm"]        ?: "-")
                 FlyerCarouselRow("Current",  data["current"]    ?: "-")

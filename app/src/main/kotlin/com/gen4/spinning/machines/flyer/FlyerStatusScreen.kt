@@ -1,5 +1,8 @@
 package com.gen4.spinning.machines.flyer
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -61,24 +64,10 @@ fun FlyerStatusScreen(vm: FlyerViewModel) {
                     value = runState.layers.toString(),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    StatusBox(
-                        label = "Lift L (mm)",
-                        value = "%.1f".format(runState.leftLift),
-                        modifier = Modifier.weight(1f),
-                    )
-                    StatusBox(
-                        label = "Lift R (mm)",
-                        value = "%.1f".format(runState.rightLift),
-                        modifier = Modifier.weight(1f),
-                    )
-                }
+                LiftAnimation(leftLift = runState.leftLift, rightLift = runState.rightLift, compact = true)
             }
 
-            Spacer(Modifier.height(114.dp))
+            Spacer(Modifier.height(96.dp))
             FlyerCarousel(vm = vm)
             Spacer(Modifier.height(38.dp))
 
@@ -140,9 +129,14 @@ fun FlyerStatusScreen(vm: FlyerViewModel) {
 }
 
 @Composable
-private fun LiftAnimation(leftLift: Float, rightLift: Float) {
+private fun LiftAnimation(leftLift: Float, rightLift: Float, compact: Boolean = false) {
     val diff = leftLift - rightLift
-    val angleDeg = (diff / 4f) * (180f / 40f)
+    val targetAngle = (diff / 4f) * (180f / 40f)
+    val angleDeg by animateFloatAsState(
+        targetValue = targetAngle,
+        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        label = "liftAngle",
+    )
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -151,30 +145,32 @@ private fun LiftAnimation(leftLift: Float, rightLift: Float) {
         Text(
             text = "Δ (mm) = ${"%.2f".format(diff)}",
             fontWeight = FontWeight.Bold,
-            fontSize = 15.sp,
+            fontSize = if (compact) 13.sp else 15.sp,
         )
-        Text(text = "(Δ = L - R)", fontSize = 12.sp)
-        Spacer(Modifier.height(16.dp))
+        if (!compact) {
+            Text(text = "(Δ = L - R)", fontSize = 12.sp)
+        }
+        Spacer(Modifier.height(if (compact) 6.dp else 16.dp))
         Box(
             modifier = Modifier
                 .fillMaxWidth(0.95f)
-                .height(30.dp)
+                .height(if (compact) 16.dp else 30.dp)
                 .rotate(angleDeg)
                 .background(SpinColors.LightGreen),
         )
         Row(
             modifier = Modifier
                 .fillMaxWidth(0.95f)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(horizontal = 8.dp, vertical = if (compact) 2.dp else 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("L", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Text("%.2f".format(leftLift), fontSize = 12.sp)
+                Text("L", fontWeight = FontWeight.Bold, fontSize = if (compact) 14.sp else 18.sp)
+                Text("%.2f".format(leftLift), fontSize = if (compact) 11.sp else 12.sp)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("R", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Text("%.2f".format(rightLift), fontSize = 12.sp)
+                Text("R", fontWeight = FontWeight.Bold, fontSize = if (compact) 14.sp else 18.sp)
+                Text("%.2f".format(rightLift), fontSize = if (compact) 11.sp else 12.sp)
             }
         }
     }
